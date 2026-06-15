@@ -48,3 +48,13 @@ Starting development server at http://0.0.0.0:8002/
 Quit the server with CONTROL-C.
 
 Watching for file changes with StatReloader
+/Users/anupammangudkar/Projects/mapnotes/mapnotes/settings.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 15, 2026 - 10:42:04
+Django version 5.1, using settings 'mapnotes.settings'
+Starting development server at http://0.0.0.0:8002/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader

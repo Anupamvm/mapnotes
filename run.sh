@@ -228,31 +228,6 @@ else
 fi
 
 # ── On Linux: patch ALLOWED_HOSTS + CSRF_TRUSTED_ORIGINS with server IPs ──────
-if [[ "$PLATFORM" == "linux" ]]; then
-    # Collect all non-loopback IPv4 addresses
-    SERVER_IPS=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | paste -sd ',' -)
-    if [[ -n "$SERVER_IPS" ]]; then
-        ALLOWED_HOSTS_VAL="localhost,127.0.0.1,0.0.0.0,$SERVER_IPS"
-
-        # Build CSRF origins list: http://<ip>:<port> for every detected IP
-        CSRF_ORIGINS="http://localhost:$PORT,http://127.0.0.1:$PORT"
-        IFS=',' read -ra IP_ARR <<< "$SERVER_IPS"
-        for ip in "${IP_ARR[@]}"; do
-            CSRF_ORIGINS="$CSRF_ORIGINS,http://$ip:$PORT"
-        done
-
-        sed -i "s|^ALLOWED_HOSTS=.*|ALLOWED_HOSTS=$ALLOWED_HOSTS_VAL|g" .env
-
-        if grep -q "^CSRF_TRUSTED_ORIGINS=" .env; then
-            sed -i "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=$CSRF_ORIGINS|g" .env
-        else
-            echo "CSRF_TRUSTED_ORIGINS=$CSRF_ORIGINS" >> .env
-        fi
-
-        success "Network access configured for: $SERVER_IPS"
-    fi
-fi
-
 # ── Handle --reset-withdb ─────────────────────────────────────────────────────
 if [[ "$RESET_DB" == "true" ]]; then
     info "Wiping database..."
@@ -337,12 +312,6 @@ if kill -0 "$SERVER_PID" 2>/dev/null; then
         echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
         echo -e "  ${BOLD}URL:${NC}       http://localhost:$PORT"
-        if [[ "$PLATFORM" == "linux" && -n "${SERVER_IPS:-}" ]]; then
-            IFS=',' read -ra BANNER_IPS <<< "$SERVER_IPS"
-            for ip in "${BANNER_IPS[@]}"; do
-                echo -e "             http://$ip:$PORT"
-            done
-        fi
         echo -e "  ${BOLD}Username:${NC}  $ADMIN_USER"
         echo -e "  ${BOLD}Password:${NC}  $ADMIN_PASS"
         echo -e "  ${BOLD}Admin:${NC}     http://localhost:$PORT/admin/"
