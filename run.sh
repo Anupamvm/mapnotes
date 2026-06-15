@@ -268,8 +268,9 @@ info "Running migrations..."
 success "Migrations complete"
 
 # Create superuser if none exists
-USER_COUNT=$("$PYTHON_VENV" manage.py shell -c "from django.contrib.auth.models import User; print(User.objects.count())" 2>/dev/null || echo "0")
-if [[ "$USER_COUNT" -eq 0 ]]; then
+USER_COUNT=$("$PYTHON_VENV" manage.py shell -c "from django.contrib.auth.models import User; print(User.objects.count())" 2>/dev/null || true)
+USER_COUNT=$(echo "${USER_COUNT:-0}" | grep -oE '^[0-9]+' || echo "0")
+if [[ "${USER_COUNT:-0}" -eq 0 ]]; then
     info "Creating admin superuser (username: $ADMIN_USER, password: $ADMIN_PASS)..."
     DJANGO_SUPERUSER_PASSWORD="$ADMIN_PASS" \
     "$PYTHON_VENV" manage.py createsuperuser \
@@ -288,9 +289,10 @@ try:
     print(Property.objects.count())
 except:
     print(0)
-" 2>/dev/null || echo "0")
+" 2>/dev/null || true)
+PROP_COUNT=$(echo "${PROP_COUNT:-0}" | grep -oE '^[0-9]+' || echo "0")
 
-if [[ "$PROP_COUNT" -eq 0 ]]; then
+if [[ "${PROP_COUNT:-0}" -eq 0 ]]; then
     info "Seeding 25 sample Maharashtra properties..."
     "$PYTHON_VENV" manage.py seed_data 2>&1 | tail -3
     success "Sample data loaded"
