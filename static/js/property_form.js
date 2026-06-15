@@ -96,6 +96,57 @@ function initPropertyFormMap() {
     });
 
     initCurrentLocationButton();
+    initGoogleMapsUrlInput();
+}
+
+function parseGoogleMapsUrl(url) {
+    // https://www.google.com/maps/@lat,lng,zoom  (most common share format)
+    let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    // ?q=lat,lng  or  &q=lat,lng
+    m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    // ?ll=lat,lng  or  &ll=lat,lng
+    m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    // plain "lat,lng" anywhere in the URL as a fallback
+    m = url.match(/(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    return null;
+}
+
+function initGoogleMapsUrlInput() {
+    const input = document.getElementById('google-maps-url');
+    const btn = document.getElementById('btn-parse-url');
+    const feedback = document.getElementById('url-parse-feedback');
+    if (!input || !btn) return;
+
+    function applyUrl() {
+        const coords = parseGoogleMapsUrl(input.value.trim());
+        if (!coords) {
+            feedback.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Could not find coordinates in that URL. Try copying a full Google Maps link (not a short goo.gl link).</span>';
+            return;
+        }
+
+        document.getElementById('id_latitude').value = coords.lat.toFixed(7);
+        document.getElementById('id_longitude').value = coords.lng.toFixed(7);
+
+        if (formMap) {
+            placeFormMarker(coords.lat, coords.lng);
+            formMap.panTo({ lat: coords.lat, lng: coords.lng });
+            formMap.setZoom(14);
+        }
+
+        feedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Marked at ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}</span>`;
+        input.value = '';
+    }
+
+    btn.addEventListener('click', applyUrl);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyUrl(); } });
 }
 
 function initCurrentLocationButton() {

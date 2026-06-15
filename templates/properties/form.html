@@ -51,7 +51,19 @@
                                 </button>
                             </div>
                             <div class="col-12 col-md-6">
-                                <div id="mini-map-form" style="height:150px; border-radius:.375rem; border:1px solid #dee2e6; background:#eee;">
+                                <label class="form-label fw-semibold">Paste Google Maps URL</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                    <input type="text" id="google-maps-url" class="form-control"
+                                           placeholder="https://www.google.com/maps/@19.80,73.42,15z">
+                                    <button type="button" id="btn-parse-url" class="btn btn-outline-primary">
+                                        <i class="bi bi-pin-map-fill me-1"></i>Mark
+                                    </button>
+                                </div>
+                                <div id="url-parse-feedback" class="small mt-1"></div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div id="mini-map-form" style="height:180px; border-radius:.375rem; border:1px solid #dee2e6; background:#eee;">
                                     <p class="text-center text-muted small pt-3">Map will appear here when coordinates are set</p>
                                 </div>
                             </div>
@@ -275,6 +287,6 @@ function initFormMap() {
     src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initFormMap">
 </script>
 {% else %}
-<script>document.addEventListener('DOMContentLoaded', initCurrentLocationButton);</script>
+<script>document.addEventListener('DOMContentLoaded', () => { initCurrentLocationButton(); initGoogleMapsUrlInput(); });</script>
 {% endif %}
 {% endblock %}
