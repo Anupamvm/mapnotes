@@ -4,3 +4,4 @@ factory-boy>=3.3
 Faker>=24.0
 pytest-django>=4.8
 Werkzeug>=3.0
+pyOpenSSL>=24.0
