@@ -195,39 +195,10 @@ else
     success "Dependencies installed"
 fi
 
-# ── Configure .env ────────────────────────────────────────────────────────────
 header "Configuring environment"
+success ".env loaded from repository"
 
-GMAPS_KEY="AIzaSyDCflKmiKGVyG132dOIe3AMdK8PbIroDoU"
 
-if [[ ! -f ".env" ]]; then
-    info "Creating .env from .env.example..."
-    cp .env.example .env
-    # Generate a random secret key
-    SECRET=$(python3 -c "import secrets, string; print(''.join(secrets.choice(string.ascii_letters + string.digits + '!@#\$%^&*') for _ in range(50)))")
-    if [[ "$PLATFORM" == "mac" ]]; then
-        sed -i '' "s|your-secret-key-here-change-in-production|$SECRET|g" .env
-        sed -i '' "s|GOOGLE_MAPS_API_KEY=.*|GOOGLE_MAPS_API_KEY=$GMAPS_KEY|g" .env
-    else
-        sed -i "s|your-secret-key-here-change-in-production|$SECRET|g" .env
-        sed -i "s|GOOGLE_MAPS_API_KEY=.*|GOOGLE_MAPS_API_KEY=$GMAPS_KEY|g" .env
-    fi
-    success ".env created with a generated secret key"
-else
-    # Patch in the Maps key if the existing .env has a blank value
-    if grep -q "GOOGLE_MAPS_API_KEY=$" .env 2>/dev/null; then
-        if [[ "$PLATFORM" == "mac" ]]; then
-            sed -i '' "s|GOOGLE_MAPS_API_KEY=|GOOGLE_MAPS_API_KEY=$GMAPS_KEY|g" .env
-        else
-            sed -i "s|GOOGLE_MAPS_API_KEY=|GOOGLE_MAPS_API_KEY=$GMAPS_KEY|g" .env
-        fi
-        success "Google Maps API key added to existing .env"
-    else
-        success ".env already exists"
-    fi
-fi
-
-# ── On Linux: patch ALLOWED_HOSTS + CSRF_TRUSTED_ORIGINS with server IPs ──────
 # ── Handle --reset-withdb ─────────────────────────────────────────────────────
 if [[ "$RESET_DB" == "true" ]]; then
     info "Wiping database..."
