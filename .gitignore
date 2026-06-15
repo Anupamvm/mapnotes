@@ -7,3 +7,5 @@ staticfiles/
 media/
 *.log
 .mapnotes.pid
+cert.crt
+cert.key

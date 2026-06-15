@@ -267,8 +267,16 @@ if [[ -f "$PID_FILE" ]]; then
     rm -f "$PID_FILE"
 fi
 
-# Start in background, redirect logs
-"$PYTHON_VENV" manage.py runserver 0.0.0.0:$PORT > "$LOG_FILE" 2>&1 &
+# Generate self-signed SSL cert if not present (enables HTTPS, avoids insecure form warnings)
+if [[ ! -f "cert.crt" ]]; then
+    info "Generating self-signed SSL certificate..."
+    openssl req -x509 -newkey rsa:2048 -keyout cert.key -out cert.crt -days 3650 -nodes \
+        -subj "/CN=mapnotes-local" 2>/dev/null
+    success "SSL certificate generated (valid 10 years)"
+fi
+
+# Start in background with HTTPS via runserver_plus
+"$PYTHON_VENV" manage.py runserver_plus --cert-file cert.crt --key-file cert.key 0.0.0.0:$PORT > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
 
@@ -282,10 +290,10 @@ if kill -0 "$SERVER_PID" 2>/dev/null; then
         echo -e "${GREEN}${BOLD}  MapNotes is running!${NC}"
         echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        echo -e "  ${BOLD}URL:${NC}       http://localhost:$PORT"
+        echo -e "  ${BOLD}URL:${NC}       https://localhost:$PORT"
         echo -e "  ${BOLD}Username:${NC}  $ADMIN_USER"
         echo -e "  ${BOLD}Password:${NC}  $ADMIN_PASS"
-        echo -e "  ${BOLD}Admin:${NC}     http://localhost:$PORT/admin/"
+        echo -e "  ${BOLD}Admin:${NC}     https://localhost:$PORT/admin/"
         echo ""
         echo -e "  ${CYAN}Logs:${NC}      tail -f $LOG_FILE"
         echo -e "  ${CYAN}Stop:${NC}      ./run.sh --stop"

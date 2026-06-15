@@ -3,3 +3,4 @@ django-debug-toolbar>=4.3
 factory-boy>=3.3
 Faker>=24.0
 pytest-django>=4.8
+Werkzeug>=3.0
