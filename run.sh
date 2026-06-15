@@ -113,10 +113,16 @@ fi
 header "Checking system dependencies"
 
 if [[ "$PLATFORM" == "linux" ]]; then
+    # Disable CD-ROM apt source if present (causes update errors on servers)
+    if grep -q "^deb cdrom:" /etc/apt/sources.list 2>/dev/null; then
+        info "Disabling CD-ROM apt source..."
+        sudo sed -i 's|^deb cdrom:|# deb cdrom:|g' /etc/apt/sources.list
+    fi
+
     # Check if python3-venv is available
     if ! python3 -c "import venv" 2>/dev/null; then
         info "Installing python3-venv..."
-        sudo apt-get update -qq
+        sudo apt-get update -qq 2>/dev/null || sudo apt-get update -qq --allow-unauthenticated 2>/dev/null || true
         sudo apt-get install -y -qq python3-venv python3-pip
     fi
 
@@ -129,7 +135,7 @@ if [[ "$PLATFORM" == "linux" ]]; then
     done
     if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
         info "Installing system packages: ${MISSING_PKGS[*]}"
-        sudo apt-get update -qq
+        sudo apt-get update -qq 2>/dev/null || sudo apt-get update -qq --allow-unauthenticated 2>/dev/null || true
         sudo apt-get install -y -qq "${MISSING_PKGS[@]}"
     fi
 fi
@@ -221,6 +227,32 @@ else
     fi
 fi
 
+# ── On Linux: patch ALLOWED_HOSTS + CSRF_TRUSTED_ORIGINS with server IPs ──────
+if [[ "$PLATFORM" == "linux" ]]; then
+    # Collect all non-loopback IPv4 addresses
+    SERVER_IPS=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | paste -sd ',' -)
+    if [[ -n "$SERVER_IPS" ]]; then
+        ALLOWED_HOSTS_VAL="localhost,127.0.0.1,0.0.0.0,$SERVER_IPS"
+
+        # Build CSRF origins list: http://<ip>:<port> for every detected IP
+        CSRF_ORIGINS="http://localhost:$PORT,http://127.0.0.1:$PORT"
+        IFS=',' read -ra IP_ARR <<< "$SERVER_IPS"
+        for ip in "${IP_ARR[@]}"; do
+            CSRF_ORIGINS="$CSRF_ORIGINS,http://$ip:$PORT"
+        done
+
+        sed -i "s|^ALLOWED_HOSTS=.*|ALLOWED_HOSTS=$ALLOWED_HOSTS_VAL|g" .env
+
+        if grep -q "^CSRF_TRUSTED_ORIGINS=" .env; then
+            sed -i "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=$CSRF_ORIGINS|g" .env
+        else
+            echo "CSRF_TRUSTED_ORIGINS=$CSRF_ORIGINS" >> .env
+        fi
+
+        success "Network access configured for: $SERVER_IPS"
+    fi
+fi
+
 # ── Handle --reset-withdb ─────────────────────────────────────────────────────
 if [[ "$RESET_DB" == "true" ]]; then
     info "Wiping database..."
@@ -301,6 +333,12 @@ if kill -0 "$SERVER_PID" 2>/dev/null; then
         echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
         echo -e "  ${BOLD}URL:${NC}       http://localhost:$PORT"
+        if [[ "$PLATFORM" == "linux" && -n "${SERVER_IPS:-}" ]]; then
+            IFS=',' read -ra BANNER_IPS <<< "$SERVER_IPS"
+            for ip in "${BANNER_IPS[@]}"; do
+                echo -e "             http://$ip:$PORT"
+            done
+        fi
         echo -e "  ${BOLD}Username:${NC}  $ADMIN_USER"
         echo -e "  ${BOLD}Password:${NC}  $ADMIN_PASS"
         echo -e "  ${BOLD}Admin:${NC}     http://localhost:$PORT/admin/"
@@ -311,9 +349,7 @@ if kill -0 "$SERVER_PID" 2>/dev/null; then
         echo -e "  ${CYAN}Reset DB:${NC}  ./run.sh --reset-withdb"
         echo ""
         if [[ "$PLATFORM" == "linux" ]]; then
-            echo -e "  ${YELLOW}Ubuntu:${NC} If accessing remotely, open port 8002 in your firewall:"
-            echo -e "          sudo ufw allow 8002/tcp"
-            echo -e "          Then access via http://YOUR_SERVER_IP:$PORT"
+            echo -e "  ${YELLOW}Firewall:${NC} If URLs above are unreachable: sudo ufw allow $PORT/tcp"
             echo ""
         fi
         echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

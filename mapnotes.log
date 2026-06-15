@@ -28,3 +28,23 @@ Not Found: /favicon.ico
 [15/Jun/2026 10:30:59] "GET /__debug__/history_sidebar/?request_id=bdac056732354a47b32c34349241fcdc HTTP/1.1" 200 10631
 [15/Jun/2026 10:34:39] "GET /properties/new/?lat=19.8071777&lng=73.4227400 HTTP/1.1" 200 38982
 [15/Jun/2026 10:34:39] "GET /properties/new/?lat=19.8071777&lng=73.4227400 HTTP/1.1" 200 38982
+/Users/anupammangudkar/Projects/mapnotes/mapnotes/settings.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 15, 2026 - 10:27:43
+Django version 5.1, using settings 'mapnotes.settings'
+Starting development server at http://0.0.0.0:8002/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
+/Users/anupammangudkar/Projects/mapnotes/mapnotes/settings.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+June 15, 2026 - 10:40:33
+Django version 5.1, using settings 'mapnotes.settings'
+Starting development server at http://0.0.0.0:8002/
+Quit the server with CONTROL-C.
+
+Watching for file changes with StatReloader
