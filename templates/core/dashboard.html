@@ -1,0 +1,149 @@
+{% extends 'base_three_panel.html' %}
+{% load static %}
+{% block title %}Dashboard — {{ project.name }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+{% endblock %}
+
+{% block panel_left %}
+<h6 class="fw-bold text-muted text-uppercase small mb-3">Quick Stats</h6>
+
+<div class="d-grid gap-2 mb-4">
+    <div class="card bg-success text-white">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between">
+                <span class="small">Total Properties</span>
+                <i class="bi bi-geo-alt-fill"></i>
+            </div>
+            <div class="fs-4 fw-bold">{{ total_properties }}</div>
+        </div>
+    </div>
+    <div class="card bg-primary text-white">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between">
+                <span class="small">Visited</span>
+                <i class="bi bi-eye-fill"></i>
+            </div>
+            <div class="fs-4 fw-bold">{{ total_visited }}</div>
+        </div>
+    </div>
+    <div class="card bg-danger text-white">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between">
+                <span class="small">Hot Leads</span>
+                <i class="bi bi-fire"></i>
+            </div>
+            <div class="fs-4 fw-bold">{{ hot_count }}</div>
+        </div>
+    </div>
+    <div class="card bg-warning text-dark">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between">
+                <span class="small">Negotiating</span>
+                <i class="bi bi-chat-dots-fill"></i>
+            </div>
+            <div class="fs-4 fw-bold">{{ negotiating_count }}</div>
+        </div>
+    </div>
+</div>
+
+{% if avg_price %}
+<div class="text-muted small mb-3">
+    Avg. Asking Price: <strong>₹{{ avg_price|floatformat:0 }}</strong>
+</div>
+{% endif %}
+
+<div class="d-grid gap-1">
+    <a href="{% url 'properties:list' %}" class="btn btn-outline-success btn-sm">
+        <i class="bi bi-map me-1"></i>View All Properties
+    </a>
+    <a href="{% url 'properties:create' %}" class="btn btn-success btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Add Property
+    </a>
+</div>
+{% endblock %}
+
+{% block panel_center %}
+<div id="map-container"
+     data-markers-url="{% url 'properties:map-markers' %}"
+     data-new-url="{% url 'properties:create' %}"
+     data-click-to-add="true"></div>
+{% endblock %}
+
+{% block panel_right %}
+<div class="p-3">
+    <h6 class="fw-bold mb-3">Recent Properties</h6>
+    {% for prop in recent_properties %}
+    <a href="{{ prop.get_absolute_url }}" class="text-decoration-none">
+        <div class="card card-body py-2 px-3 mb-2 hover-shadow">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="fw-semibold small">{{ prop.name }}</div>
+                    <div class="text-muted x-small">{{ prop.district }}{% if prop.taluka %}, {{ prop.taluka }}{% endif %}</div>
+                </div>
+                <span class="badge bg-{{ prop.priority_color }}">{{ prop.get_priority_display }}</span>
+            </div>
+        </div>
+    </a>
+    {% empty %}
+    <p class="text-muted small">No properties yet. Click the map to add one.</p>
+    {% endfor %}
+
+    {% if by_district %}
+    <hr>
+    <h6 class="fw-bold mb-2">By District</h6>
+    <canvas id="districtChart" height="180"></canvas>
+    {% endif %}
+
+    {% if by_status %}
+    <hr>
+    <h6 class="fw-bold mb-2">By Status</h6>
+    <canvas id="statusChart" height="180"></canvas>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if GOOGLE_MAPS_API_KEY %}
+<script>
+function initMap() {
+    window.mapManager = new MapManager('map-container');
+}
+</script>
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initMap">
+</script>
+{% endif %}
+{% load static %}
+<script src="{% static 'js/map.js' %}"></script>
+
+{% if by_district %}
+<script>
+const districtData = {{ by_district|safe }};
+const statusData = {{ by_status|safe }};
+
+new Chart(document.getElementById('districtChart'), {
+    type: 'bar',
+    data: {
+        labels: districtData.map(d => d.district || 'Unknown'),
+        datasets: [{
+            data: districtData.map(d => d.count),
+            backgroundColor: '#198754',
+        }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+});
+
+const statusColors = { to_visit:'#6c757d', visited:'#0d6efd', under_discussion:'#0dcaf0', due_diligence:'#ffc107', negotiating:'#fd7e14', purchased:'#198754', rejected:'#dc3545' };
+new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: statusData.map(d => d.status.replace(/_/g,' ')),
+        datasets: [{ data: statusData.map(d => d.count), backgroundColor: statusData.map(d => statusColors[d.status] || '#6c757d') }]
+    },
+    options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+});
+</script>
+{% endif %}
+{% endblock %}

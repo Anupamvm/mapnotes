@@ -1,0 +1,26 @@
+from django.urls import path
+from . import views
+from apps.activity import views as activity_views
+
+app_name = 'properties'
+
+urlpatterns = [
+    path('', views.PropertyListView.as_view(), name='list'),
+    path('new/', views.PropertyCreateView.as_view(), name='create'),
+    path('map/markers/', views.MapMarkersView.as_view(), name='map-markers'),
+
+    path('<slug:slug>/', views.PropertyDetailView.as_view(), name='detail'),
+    path('<slug:slug>/edit/', views.PropertyUpdateView.as_view(), name='edit'),
+    path('<slug:slug>/delete/', views.PropertyDeleteView.as_view(), name='delete'),
+
+    # HTMX activity partials
+    path('<slug:slug>/visits/add/', activity_views.VisitCreateView.as_view(), name='visit-add'),
+    path('<slug:slug>/notes/add/', activity_views.NoteCreateView.as_view(), name='note-add'),
+    path('<slug:slug>/notes/<int:pk>/delete/', activity_views.NoteDeleteView.as_view(), name='note-delete'),
+    path('<slug:slug>/followups/add/', activity_views.FollowUpCreateView.as_view(), name='followup-add'),
+    path('<slug:slug>/followups/<int:pk>/toggle/', activity_views.FollowUpToggleView.as_view(), name='followup-toggle'),
+
+    # Attachments
+    path('<slug:slug>/attachments/upload/', views.AttachmentUploadView.as_view(), name='attachment-upload'),
+    path('<slug:slug>/attachments/<int:pk>/delete/', views.AttachmentDeleteView.as_view(), name='attachment-delete'),
+]

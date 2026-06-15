@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Delete Map — MapNotes{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Delete Map</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Are you sure you want to delete <strong>{{ object.name }}</strong>?</p>
+                    <p class="text-danger">This will permanently delete the map and all <strong>{{ object.property_count }}</strong> properties inside it.</p>
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Yes, Delete
+                        </button>
+                        <a href="{% url 'core:project-list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

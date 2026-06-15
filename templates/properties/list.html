@@ -1,0 +1,36 @@
+{% extends 'base_three_panel.html' %}
+{% load static %}
+{% block title %}Properties — {{ project.name }}{% endblock %}
+
+{% block panel_left %}
+{% include 'properties/partials/_filter_panel.html' %}
+{% endblock %}
+
+{% block panel_center %}
+<div id="map-container"
+     data-markers-url="{% url 'properties:map-markers' %}"
+     data-new-url="{% url 'properties:create' %}"
+     data-click-to-add="true"></div>
+{% endblock %}
+
+{% block panel_right %}
+<div id="property-list-results">
+    {% include 'properties/partials/_property_list_results.html' %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/map.js' %}"></script>
+<script src="{% static 'js/filters.js' %}"></script>
+
+{% if GOOGLE_MAPS_API_KEY %}
+<script>
+function initMap() {
+    window.mapManager = new MapManager('map-container');
+}
+</script>
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initMap">
+</script>
+{% endif %}
+{% endblock %}

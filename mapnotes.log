@@ -1,0 +1,30 @@
+Watching for file changes with StatReloader
+[15/Jun/2026 10:28:01] "GET / HTTP/1.1" 302 0
+[15/Jun/2026 10:28:01] "GET /accounts/login/?next=/ HTTP/1.1" 200 16453
+[15/Jun/2026 10:28:01] "GET /static/debug_toolbar/js/toolbar.js HTTP/1.1" 200 14879
+[15/Jun/2026 10:28:01] "GET /static/debug_toolbar/css/toolbar.css HTTP/1.1" 200 30587
+[15/Jun/2026 10:28:01] "GET /static/debug_toolbar/js/utils.js HTTP/1.1" 200 4700
+[15/Jun/2026 10:28:01] "GET /static/debug_toolbar/css/print.css HTTP/1.1" 200 43
+Not Found: /favicon.ico
+[15/Jun/2026 10:28:01] "GET /favicon.ico HTTP/1.1" 404 19317
+[15/Jun/2026 10:28:08] "POST /accounts/login/?next=/ HTTP/1.1" 302 0
+[15/Jun/2026 10:28:08] "GET / HTTP/1.1" 200 19213
+[15/Jun/2026 10:28:08] "GET /static/css/app.css HTTP/1.1" 200 906
+[15/Jun/2026 10:28:08] "GET /static/js/app.js HTTP/1.1" 200 2252
+[15/Jun/2026 10:28:25] "GET /projects/farmland-research-2026-2026/activate/ HTTP/1.1" 302 0
+[15/Jun/2026 10:28:25] "GET /dashboard/ HTTP/1.1" 200 27245
+[15/Jun/2026 10:28:25] "GET /static/js/map.js HTTP/1.1" 200 3285
+[15/Jun/2026 10:28:26] "GET /properties/map/markers/ HTTP/1.1" 200 24485
+[15/Jun/2026 10:28:26] "GET /__debug__/history_sidebar/?request_id=871b72e7ebc043b2b02833f360f33b9f HTTP/1.1" 200 10631
+[15/Jun/2026 10:28:34] "GET /properties/village-u-dindori-plot-mn-9652a7/ HTTP/1.1" 200 41482
+[15/Jun/2026 10:28:48] "GET /properties/new/ HTTP/1.1" 200 38575
+[15/Jun/2026 10:28:48] "GET /static/js/property_form.js HTTP/1.1" 200 4230
+[15/Jun/2026 10:29:24] "GET /properties/new/ HTTP/1.1" 200 38575
+[15/Jun/2026 10:29:25] "GET /properties/new/ HTTP/1.1" 200 38575
+[15/Jun/2026 10:30:42] "GET /properties/village-y-haveli-plot-mn-2db6fe/ HTTP/1.1" 200 41248
+[15/Jun/2026 10:30:59] "GET /properties/ HTTP/1.1" 200 69810
+[15/Jun/2026 10:30:59] "GET /static/js/filters.js HTTP/1.1" 200 692
+[15/Jun/2026 10:30:59] "GET /properties/map/markers/ HTTP/1.1" 200 24485
+[15/Jun/2026 10:30:59] "GET /__debug__/history_sidebar/?request_id=bdac056732354a47b32c34349241fcdc HTTP/1.1" 200 10631
+[15/Jun/2026 10:34:39] "GET /properties/new/?lat=19.8071777&lng=73.4227400 HTTP/1.1" 200 38982
+[15/Jun/2026 10:34:39] "GET /properties/new/?lat=19.8071777&lng=73.4227400 HTTP/1.1" 200 38982

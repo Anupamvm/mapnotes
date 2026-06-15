@@ -1,0 +1,35 @@
+<div class="col">
+    <div class="card h-100 shadow-sm property-card"
+         data-slug="{{ prop.slug }}"
+         onmouseenter="window.mapManager && window.mapManager.highlightMarker('{{ prop.slug }}')"
+         onclick="window.location.href='{{ prop.get_absolute_url }}'">
+        <div class="card-body pb-2">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+                <span class="badge bg-{{ prop.priority_color }}">{{ prop.get_priority_display }}</span>
+                <span class="badge bg-secondary">{{ prop.get_status_display }}</span>
+            </div>
+            <h6 class="card-title fw-bold mb-1 text-truncate" title="{{ prop.name }}">{{ prop.name }}</h6>
+            <p class="text-muted small mb-1">
+                <i class="bi bi-geo-alt me-1"></i>{{ prop.village }}{% if prop.taluka %}, {{ prop.taluka }}{% endif %}, {{ prop.district }}
+            </p>
+            {% if prop.total_area %}
+            <p class="small mb-1">
+                <i class="bi bi-rulers me-1"></i>{{ prop.total_area }} {{ prop.get_area_unit_display }}
+            </p>
+            {% endif %}
+            {% if prop.asking_price %}
+            <p class="small mb-0 fw-semibold text-success">₹{{ prop.asking_price|floatformat:0 }}</p>
+            {% endif %}
+        </div>
+        <div class="card-footer bg-transparent py-1 d-flex justify-content-between align-items-center">
+            <small class="text-muted">{{ prop.reference_id }}</small>
+            {% if prop.investment_score %}
+            <span class="badge bg-info text-dark">Score: {{ prop.investment_score }}</span>
+            {% endif %}
+            <div class="form-check mb-0">
+                <input class="form-check-input compare-checkbox" type="checkbox"
+                       value="{{ prop.pk }}" onclick="event.stopPropagation(); updateCompare(this)">
+            </div>
+        </div>
+    </div>
+</div>

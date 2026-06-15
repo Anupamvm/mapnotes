@@ -1,0 +1,68 @@
+<div class="mb-3">
+    <form hx-post="{% url 'properties:attachment-upload' property.slug %}"
+          hx-target="#attachment-section"
+          hx-encoding="multipart/form-data"
+          hx-swap="innerHTML">
+        {% csrf_token %}
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-sm-5">
+                <label class="form-label small fw-semibold">File</label>
+                <input type="file" name="file" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-12 col-sm-3">
+                <label class="form-label small fw-semibold">Type</label>
+                <select name="file_type" class="form-select form-select-sm">
+                    <option value="photo">Photo</option>
+                    <option value="survey_map">Survey Map</option>
+                    <option value="pdf">PDF</option>
+                    <option value="document">Document</option>
+                    <option value="video">Video</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-3">
+                <label class="form-label small fw-semibold">Description</label>
+                <input type="text" name="description" class="form-control form-control-sm" placeholder="Optional...">
+            </div>
+            <div class="col-12 col-sm-1">
+                <button type="submit" class="btn btn-success btn-sm w-100">
+                    <i class="bi bi-upload"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if attachments %}
+<div class="row row-cols-2 row-cols-md-3 g-2">
+    {% for att in attachments %}
+    <div class="col">
+        <div class="card h-100">
+            {% if att.is_image %}
+            <img src="{{ att.file.url }}" class="card-img-top" style="height:120px; object-fit:cover;" alt="{{ att.description }}">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:80px;">
+                <i class="bi bi-file-earmark-text fs-2 text-muted"></i>
+            </div>
+            {% endif %}
+            <div class="card-body py-1 px-2">
+                <p class="small mb-0 text-truncate" title="{{ att.filename }}">{{ att.filename }}</p>
+                <p class="x-small text-muted mb-0">{{ att.get_file_type_display }}</p>
+            </div>
+            <div class="card-footer py-1 px-2 d-flex justify-content-between">
+                <a href="{{ att.file.url }}" target="_blank" class="btn btn-outline-primary btn-sm py-0">
+                    <i class="bi bi-download"></i>
+                </a>
+                <button class="btn btn-outline-danger btn-sm py-0"
+                        hx-post="{% url 'properties:attachment-delete' property.slug att.pk %}"
+                        hx-target="#attachment-section"
+                        hx-confirm="Delete this file?">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted small">No files attached yet.</p>
+{% endif %}

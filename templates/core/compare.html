@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Compare Properties — MapNotes{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <h2 class="h4 fw-bold mb-3"><i class="bi bi-layout-three-columns me-2"></i>Compare Properties</h2>
+
+    {% if properties %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th style="min-width:160px;">Attribute</th>
+                    {% for prop in properties %}
+                    <th class="text-center" style="min-width:200px;">
+                        <a href="{{ prop.get_absolute_url }}" class="text-white text-decoration-none">{{ prop.name }}</a>
+                        <br><small class="text-muted">{{ prop.reference_id }}</small>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="table-light"><td colspan="{{ properties|length|add:1 }}" class="fw-bold small text-muted text-uppercase">Basic</td></tr>
+                {% for row in comparison_rows %}
+                <tr>
+                    <td class="fw-semibold small">{{ row.label }}</td>
+                    {% for val in row.values %}
+                    <td class="text-center small">{{ val|default:"—" }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-layout-three-columns text-muted" style="font-size:3rem;"></i>
+        <p class="mt-2 text-muted">Select properties from the <a href="{% url 'properties:list' %}">map view</a> to compare.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if properties %}
+<script>
+// Build comparison rows from template context
+</script>
+{% endif %}
+{% endblock %}

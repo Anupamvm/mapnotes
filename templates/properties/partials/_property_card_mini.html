@@ -1,0 +1,12 @@
+<div style="min-width:200px; max-width:260px;">
+    <div class="d-flex justify-content-between mb-1">
+        <span class="badge bg-{{ property.priority_color }} small">{{ property.get_priority_display }}</span>
+        <span class="badge bg-secondary small">{{ property.get_status_display }}</span>
+    </div>
+    <strong class="d-block mb-1">{{ property.name }}</strong>
+    <div class="small text-muted mb-1">{{ property.district }}{% if property.taluka %}, {{ property.taluka }}{% endif %}</div>
+    {% if property.total_area %}<div class="small">{{ property.total_area }} {{ property.get_area_unit_display }}</div>{% endif %}
+    {% if property.asking_price %}<div class="small fw-semibold text-success">₹{{ property.asking_price|floatformat:0 }}</div>{% endif %}
+    {% if property.last_visit %}<div class="small text-muted mt-1">Last visit: {{ property.last_visit.visit_date }}</div>{% endif %}
+    <a href="{{ property.get_absolute_url }}" class="btn btn-sm btn-outline-primary mt-2 w-100">View Details</a>
+</div>

@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags static %}
+{% block title %}{% if is_edit %}Edit{% else %}New Property{% endif %} — MapNotes{% endblock %}
+
+{% block extra_css %}
+<style>
+.section-card { border-left: 4px solid #198754; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="h3 fw-bold mb-0">
+                    <i class="bi bi-geo-alt-fill text-success me-2"></i>
+                    {% if is_edit %}Edit: {{ object.name }}{% else %}Add New Property{% endif %}
+                </h1>
+                <a href="{% url 'properties:list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </a>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" id="property-form">
+                {% csrf_token %}
+
+                <!-- Location Section with Map -->
+                <div class="card section-card mb-3">
+                    <div class="card-header bg-success text-white fw-bold">
+                        <i class="bi bi-geo-alt me-1"></i>Location
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Full Address <span class="text-muted small">(type to search)</span></label>
+                                {{ form.full_address }}
+                                {% if form.full_address.errors %}<div class="text-danger small">{{ form.full_address.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Latitude</label>
+                                {{ form.latitude }}
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label fw-semibold">Longitude</label>
+                                {{ form.longitude }}
+                            </div>
+                            <div class="col-12 col-md-6 d-flex align-items-end">
+                                <button type="button" id="btn-get-location" class="btn btn-outline-success btn-sm w-100">
+                                    <i class="bi bi-crosshair me-1"></i>Use My Current Location
+                                </button>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div id="mini-map-form" style="height:150px; border-radius:.375rem; border:1px solid #dee2e6; background:#eee;">
+                                    <p class="text-center text-muted small pt-3">Map will appear here when coordinates are set</p>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">Village</label>
+                                {{ form.village }}
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">Taluka</label>
+                                {{ form.taluka }}
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">District</label>
+                                {{ form.district }}
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">State</label>
+                                {{ form.state }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Basic Info -->
+                <div class="card section-card mb-3" style="border-left-color:#0d6efd;">
+                    <div class="card-header bg-primary text-white fw-bold">
+                        <i class="bi bi-info-circle me-1"></i>Basic Information
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label fw-semibold">Property Name *</label>
+                                {{ form.name }}
+                                {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold">Priority</label>
+                                {{ form.priority }}
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold">Status</label>
+                                {{ form.status }}
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold">Total Area</label>
+                                {{ form.total_area }}
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold">Area Unit</label>
+                                {{ form.area_unit }}
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label fw-semibold">Land Type</label>
+                                {{ form.land_type }}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">General Notes</label>
+                                {{ form.general_notes }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing -->
+                <div class="card section-card mb-3" style="border-left-color:#198754;">
+                    <div class="card-header bg-success text-white fw-bold">
+                        <i class="bi bi-currency-rupee me-1"></i>Pricing
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">Asking Price (₹)</label>
+                                {{ form.asking_price }}
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">Expected Negotiated (₹)</label>
+                                {{ form.expected_negotiated_price }}
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">Price per Acre (₹)</label>
+                                {{ form.price_per_acre }}
+                            </div>
+                            <div class="col-12 col-sm-6 col-md-3">
+                                <label class="form-label fw-semibold">Market Value (₹)</label>
+                                {{ form.estimated_market_value }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ownership -->
+                <div class="card section-card mb-3" style="border-left-color:#6c757d;">
+                    <div class="card-header bg-secondary text-white fw-bold">
+                        <i class="bi bi-person me-1"></i>Ownership &amp; Contacts
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-3"><label class="form-label fw-semibold">Owner Name</label>{{ form.owner_name }}</div>
+                            <div class="col-12 col-md-3"><label class="form-label fw-semibold">Agent Name</label>{{ form.agent_name }}</div>
+                            <div class="col-12 col-md-3"><label class="form-label fw-semibold">Agent Phone</label>{{ form.agent_phone }}</div>
+                            <div class="col-12 col-md-3"><label class="form-label fw-semibold">Alternate Contact</label>{{ form.alternate_contact }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Site Evaluation -->
+                <div class="card mb-3" style="border-left: 4px solid #0dcaf0;">
+                    <div class="card-header bg-info text-dark fw-bold d-flex justify-content-between" data-bs-toggle="collapse" data-bs-target="#eval-section" style="cursor:pointer;">
+                        <span><i class="bi bi-clipboard-check me-1"></i>Site Evaluation</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="collapse {% if is_edit %}show{% endif %}" id="eval-section">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-12"><h6 class="fw-semibold text-muted small text-uppercase">Water</h6></div>
+                                <div class="col-12 col-sm-6 col-md-3">
+                                    <label class="form-label small">Water Rating (0-10)</label>{{ evaluation_form.water_availability_rating }}
+                                </div>
+                                <div class="col-12 col-sm-6 col-md-3">
+                                    <label class="form-label small">Borewell Available</label>{{ evaluation_form.borewell_available }}
+                                </div>
+                                <div class="col-12 col-sm-6 col-md-3">
+                                    <label class="form-label small">Borewell Depth (ft)</label>{{ evaluation_form.borewell_depth }}
+                                </div>
+                                <div class="col-12 col-sm-6 col-md-3">
+                                    <div class="form-check mt-4">{{ evaluation_form.river_nearby }} <label class="form-check-label small">River Nearby</label></div>
+                                    <div class="form-check">{{ evaluation_form.lake_nearby }} <label class="form-check-label small">Lake Nearby</label></div>
+                                    <div class="form-check">{{ evaluation_form.dam_nearby }} <label class="form-check-label small">Dam Nearby</label></div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Water Comments</label>{{ evaluation_form.water_comments }}
+                                </div>
+
+                                <div class="col-12 border-top pt-2"><h6 class="fw-semibold text-muted small text-uppercase">Access</h6></div>
+                                <div class="col-12 col-sm-6 col-md-3"><label class="form-label small">Road Rating (0-10)</label>{{ evaluation_form.road_access_rating }}</div>
+                                <div class="col-12 col-sm-6 col-md-3"><label class="form-label small">Distance to Main Road (km)</label>{{ evaluation_form.distance_to_main_road }}</div>
+                                <div class="col-12 col-sm-6 col-md-3"><label class="form-label small">Internal Road Condition</label>{{ evaluation_form.internal_road_condition }}</div>
+                                <div class="col-12"><label class="form-label small">Accessibility Notes</label>{{ evaluation_form.accessibility_notes }}</div>
+
+                                <div class="col-12 border-top pt-2"><h6 class="fw-semibold text-muted small text-uppercase">Utilities &amp; Terrain</h6></div>
+                                <div class="col-12 col-sm-4">
+                                    <div class="form-check">{{ evaluation_form.electricity_available }} <label class="form-check-label small">Electricity</label></div>
+                                    <div class="form-check">{{ evaluation_form.internet_available }} <label class="form-check-label small">Internet</label></div>
+                                </div>
+                                <div class="col-12 col-sm-4"><label class="form-label small">Mobile Network (0-5)</label>{{ evaluation_form.mobile_network_rating }}</div>
+                                <div class="col-12 col-sm-4"><label class="form-label small">Terrain Type</label>{{ evaluation_form.terrain_type }}</div>
+
+                                <div class="col-12 border-top pt-2"><h6 class="fw-semibold text-muted small text-uppercase">Legal</h6></div>
+                                <div class="col-12 col-sm-4">
+                                    <div class="form-check">{{ evaluation_form.title_clear }} <label class="form-check-label small">Title Clear</label></div>
+                                    <div class="form-check">{{ evaluation_form.mutation_complete }} <label class="form-check-label small">Mutation Complete</label></div>
+                                    <div class="form-check">{{ evaluation_form.survey_completed }} <label class="form-check-label small">Survey Completed</label></div>
+                                </div>
+                                <div class="col-12 col-sm-8"><label class="form-label small">Encumbrances</label>{{ evaluation_form.encumbrances }}</div>
+
+                                <div class="col-12 border-top pt-2"><h6 class="fw-semibold text-muted small text-uppercase">Environment</h6></div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Tree Cover (0-10)</label>{{ evaluation_form.tree_cover_rating }}</div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Scenic Value (0-10)</label>{{ evaluation_form.scenic_value_rating }}</div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Pollution (0-10, lower=better)</label>{{ evaluation_form.pollution_rating }}</div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Noise (0-10)</label>{{ evaluation_form.noise_rating }}</div>
+
+                                <div class="col-12 border-top pt-2"><h6 class="fw-semibold text-muted small text-uppercase">Future Potential</h6></div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Development (0-10)</label>{{ evaluation_form.development_potential_rating }}</div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Tourism (0-10)</label>{{ evaluation_form.tourism_potential_rating }}</div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Farming (0-10)</label>{{ evaluation_form.farming_potential_rating }}</div>
+                                <div class="col-6 col-md-3"><label class="form-label small">Weekend Home (0-10)</label>{{ evaluation_form.weekend_home_potential_rating }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distances -->
+                <div class="card mb-3" style="border-left: 4px solid #fd7e14;">
+                    <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between" data-bs-toggle="collapse" data-bs-target="#dist-section" style="cursor:pointer;">
+                        <span><i class="bi bi-signpost me-1"></i>Distances (km)</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="collapse {% if is_edit %}show{% endif %}" id="dist-section">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">Highway</label>{{ distance_form.highway }}</div>
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">Dam</label>{{ distance_form.dam }}</div>
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">Town</label>{{ distance_form.town }}</div>
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">Hospital</label>{{ distance_form.hospital }}</div>
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">School</label>{{ distance_form.school }}</div>
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">Railway Station</label>{{ distance_form.railway_station }}</div>
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">Airport</label>{{ distance_form.airport }}</div>
+                                <div class="col-6 col-sm-4 col-md-3"><label class="form-label small">Industrial Zone</label>{{ distance_form.industrial_zone }}</div>
+                                <div class="col-12"><label class="form-label small">Future Infrastructure Notes</label>{{ distance_form.future_infrastructure_notes }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-lg me-1"></i>Save Property
+                    </button>
+                    {% if is_edit %}
+                    <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary">Cancel</a>
+                    {% else %}
+                    <a href="{% url 'properties:list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/property_form.js' %}"></script>
+{% if GOOGLE_MAPS_API_KEY %}
+<script>
+function initFormMap() {
+    initPropertyFormMap();
+}
+</script>
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initFormMap">
+</script>
+{% else %}
+<script>document.addEventListener('DOMContentLoaded', initCurrentLocationButton);</script>
+{% endif %}
+{% endblock %}

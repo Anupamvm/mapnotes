@@ -1,0 +1,109 @@
+<h6 class="fw-bold text-muted text-uppercase small mb-3">
+    <i class="bi bi-funnel me-1"></i>Filters
+</h6>
+
+<form id="filter-form"
+      hx-get="{% url 'properties:list' %}"
+      hx-target="#property-list-results"
+      hx-trigger="change, input delay:500ms"
+      hx-push-url="true">
+
+    <div class="mb-3">
+        <label class="form-label small fw-semibold">Priority</label>
+        {% for value, label in filter_form.priority.field.choices %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="priority" value="{{ value }}"
+                   id="p_{{ value }}"
+                   {% if value in filter_form.data.getlist.priority %}checked{% endif %}>
+            <label class="form-check-label small" for="p_{{ value }}">{{ label }}</label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label small fw-semibold">Status</label>
+        {% for value, label in filter_form.status.field.choices %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="status" value="{{ value }}"
+                   id="s_{{ value }}"
+                   {% if value in filter_form.data.getlist.status %}checked{% endif %}>
+            <label class="form-check-label small" for="s_{{ value }}">{{ label }}</label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label small fw-semibold">District</label>
+        <input type="text" name="district" class="form-control form-control-sm"
+               placeholder="Filter by district..." value="{{ filter_form.data.district }}">
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label small fw-semibold">Price Range (₹)</label>
+        <div class="row g-1">
+            <div class="col-6">
+                <input type="number" name="min_price" class="form-control form-control-sm"
+                       placeholder="Min" value="{{ filter_form.data.min_price }}">
+            </div>
+            <div class="col-6">
+                <input type="number" name="max_price" class="form-control form-control-sm"
+                       placeholder="Max" value="{{ filter_form.data.max_price }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label small fw-semibold">Area Range</label>
+        <div class="row g-1">
+            <div class="col-6">
+                <input type="number" name="min_area" class="form-control form-control-sm"
+                       placeholder="Min" value="{{ filter_form.data.min_area }}">
+            </div>
+            <div class="col-6">
+                <input type="number" name="max_area" class="form-control form-control-sm"
+                       placeholder="Max" value="{{ filter_form.data.max_area }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label small fw-semibold">Land Type</label>
+        {% for value, label in filter_form.land_type.field.choices %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="land_type" value="{{ value }}"
+                   id="lt_{{ value }}"
+                   {% if value in filter_form.data.getlist.land_type %}checked{% endif %}>
+            <label class="form-check-label small" for="lt_{{ value }}">{{ label }}</label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label small fw-semibold">Water Rating (min)</label>
+        <input type="number" name="water_min" class="form-control form-control-sm"
+               min="0" max="10" placeholder="0-10" value="{{ filter_form.data.water_min }}">
+    </div>
+
+    <div class="mb-3">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="has_borewell" value="on"
+                   id="f_borewell" {% if filter_form.data.has_borewell %}checked{% endif %}>
+            <label class="form-check-label small" for="f_borewell">Has Borewell</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="title_clear" value="on"
+                   id="f_title" {% if filter_form.data.title_clear %}checked{% endif %}>
+            <label class="form-check-label small" for="f_title">Title Clear</label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="visited" value="on"
+                   id="f_visited" {% if filter_form.data.visited %}checked{% endif %}>
+            <label class="form-check-label small" for="f_visited">Has Been Visited</label>
+        </div>
+    </div>
+
+    <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+            onclick="this.closest('form').reset(); htmx.trigger(this.closest('form'), 'change')">
+        <i class="bi bi-x-circle me-1"></i>Clear Filters
+    </button>
+</form>

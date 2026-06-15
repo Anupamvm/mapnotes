@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Delete {{ object.name }} — MapNotes{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Delete <strong>{{ object.name }}</strong>?</p>
+                    <p class="text-danger small">This will also delete all visits, notes, follow-ups, and attachments for this property.</p>
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                        <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

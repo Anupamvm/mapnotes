@@ -1,0 +1,55 @@
+<div class="mb-3">
+    <form hx-post="{% url 'properties:followup-add' property.slug %}"
+          hx-target="#followup-section"
+          hx-swap="innerHTML">
+        {% csrf_token %}
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-sm-3">
+                <input type="date" name="reminder_date" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-12 col-sm-4">
+                <select name="action_type" class="form-select form-select-sm">
+                    <option value="call_agent">Call Agent</option>
+                    <option value="revisit">Revisit</option>
+                    <option value="request_documents">Request Documents</option>
+                    <option value="negotiate">Follow Up Negotiation</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-4">
+                <input type="text" name="notes" class="form-control form-control-sm" placeholder="Notes...">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-warning btn-sm">
+                    <i class="bi bi-bell-plus me-1"></i>Add
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if followups %}
+{% for fu in followups %}
+<div class="d-flex align-items-start gap-2 mb-2 p-2 rounded {% if fu.is_done %}bg-light text-muted{% elif fu.is_overdue %}bg-danger-subtle{% else %}bg-warning-subtle{% endif %}">
+    <button class="btn btn-sm {% if fu.is_done %}btn-outline-secondary{% else %}btn-outline-success{% endif %} flex-shrink-0"
+            hx-post="{% url 'properties:followup-toggle' property.slug fu.pk %}"
+            hx-target="#followup-section"
+            hx-swap="innerHTML"
+            title="{% if fu.is_done %}Mark undone{% else %}Mark done{% endif %}">
+        <i class="bi bi-{% if fu.is_done %}check-circle-fill{% else %}circle{% endif %}"></i>
+    </button>
+    <div>
+        <div class="small fw-semibold {% if fu.is_done %}text-decoration-line-through{% endif %}">
+            {{ fu.get_action_type_display }}
+        </div>
+        <div class="x-small text-muted">
+            {{ fu.reminder_date }}
+            {% if fu.is_overdue and not fu.is_done %}<span class="badge bg-danger ms-1">Overdue</span>{% endif %}
+        </div>
+        {% if fu.notes %}<div class="x-small">{{ fu.notes }}</div>{% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="text-muted small">No follow-ups set.</p>
+{% endif %}

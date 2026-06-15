@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ property.name }} — MapNotes{% endblock %}
+
+{% block extra_css %}
+<style>
+.rating-dot { display:inline-block; width:12px; height:12px; border-radius:50%; background:#dee2e6; margin-right:2px; }
+.rating-dot.filled { background:#198754; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2">
+    <!-- Header -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 small">
+                    <li class="breadcrumb-item"><a href="{% url 'properties:list' %}">Properties</a></li>
+                    <li class="breadcrumb-item active">{{ property.name }}</li>
+                </ol>
+            </nav>
+            <h1 class="h3 fw-bold mb-0 mt-1">
+                {{ property.name }}
+                <span class="badge bg-{{ property.priority_color }} ms-2">{{ property.get_priority_display }}</span>
+                <span class="badge bg-secondary ms-1">{{ property.get_status_display }}</span>
+            </h1>
+            <div class="text-muted small">
+                {{ property.reference_id }} &bull; {{ property.district }}{% if property.taluka %}, {{ property.taluka }}{% endif %}{% if property.village %}, {{ property.village }}{% endif %}
+            </div>
+        </div>
+        <div class="col-auto d-flex gap-2">
+            <a href="{% url 'properties:edit' property.slug %}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-pencil me-1"></i>Edit
+            </a>
+            <a href="{% url 'properties:delete' property.slug %}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Left: Map + Score -->
+        <div class="col-12 col-lg-4">
+            {% if property.latitude and property.longitude %}
+            <div class="card mb-3">
+                <div id="mini-map" style="height:220px; border-radius: .375rem;"></div>
+            </div>
+            {% endif %}
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row g-2 text-center">
+                        {% if property.total_area %}
+                        <div class="col-6">
+                            <div class="text-muted small">Area</div>
+                            <div class="fw-bold">{{ property.total_area }} {{ property.get_area_unit_display }}</div>
+                        </div>
+                        {% endif %}
+                        {% if property.asking_price %}
+                        <div class="col-6">
+                            <div class="text-muted small">Asking Price</div>
+                            <div class="fw-bold text-success">₹{{ property.asking_price|floatformat:0 }}</div>
+                        </div>
+                        {% endif %}
+                        {% if property.price_per_acre %}
+                        <div class="col-6">
+                            <div class="text-muted small">Per Acre</div>
+                            <div class="fw-bold">₹{{ property.price_per_acre|floatformat:0 }}</div>
+                        </div>
+                        {% endif %}
+                        <div class="col-6">
+                            <div class="text-muted small">Score</div>
+                            <div class="fw-bold">
+                                <span id="score-display">{{ property.investment_score|default:"—" }}</span>
+                                <button class="btn btn-link btn-sm p-0 ms-1"
+                                        hx-post="{% url 'api:property-compute-score' property.pk %}"
+                                        hx-target="#score-display"
+                                        hx-swap="innerHTML"
+                                        hx-vals='{"_method": "POST"}'
+                                        title="Recompute score">
+                                    <i class="bi bi-arrow-clockwise small"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent/Owner -->
+            {% if property.agent_name or property.owner_name %}
+            <div class="card mb-3">
+                <div class="card-header py-2"><h6 class="mb-0 small fw-bold">Contacts</h6></div>
+                <div class="card-body py-2">
+                    {% if property.owner_name %}
+                    <div class="small"><span class="text-muted">Owner:</span> {{ property.owner_name }}</div>
+                    {% endif %}
+                    {% if property.agent_name %}
+                    <div class="small"><span class="text-muted">Agent:</span> {{ property.agent_name }}
+                        {% if property.agent_phone %}<a href="tel:{{ property.agent_phone }}" class="ms-1">{{ property.agent_phone }}</a>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if property.alternate_contact %}
+                    <div class="small"><span class="text-muted">Alt:</span> {{ property.alternate_contact }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Tabs -->
+        <div class="col-12 col-lg-8">
+            <ul class="nav nav-tabs mb-3" id="propTabs" role="tablist">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview">Overview</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-evaluation">Evaluation</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-distances">Distances</button></li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-visits">
+                        Visits <span class="badge bg-secondary ms-1">{{ property.visits.count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notes" id="notes-tab-btn">
+                        Notes <span class="badge bg-secondary ms-1" id="note-count">{{ property.notes.count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-files">Files</button></li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Overview -->
+                <div class="tab-pane fade show active" id="tab-overview">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            {% if property.full_address %}
+                            <p class="small"><i class="bi bi-geo-alt me-1 text-muted"></i>{{ property.full_address }}</p>
+                            {% endif %}
+                            {% if property.latitude and property.longitude %}
+                            <p class="small"><i class="bi bi-crosshair me-1 text-muted"></i>{{ property.latitude }}, {{ property.longitude }}</p>
+                            {% endif %}
+                            {% if property.land_type %}
+                            <p class="small"><i class="bi bi-tag me-1 text-muted"></i>{{ property.get_land_type_display }}</p>
+                            {% endif %}
+                        </div>
+                        {% if property.general_notes %}
+                        <div class="col-12">
+                            <h6 class="fw-semibold small">General Notes</h6>
+                            <p class="small">{{ property.general_notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Follow-ups -->
+                    <div id="followup-section" class="mt-3">
+                        <h6 class="fw-semibold">Follow-ups</h6>
+                        {% include 'activity/partials/_followup_list.html' %}
+                    </div>
+                </div>
+
+                <!-- Evaluation -->
+                <div class="tab-pane fade" id="tab-evaluation">
+                    {% if property.evaluation %}
+                    {% with ev=property.evaluation %}
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-header py-2 bg-primary text-white small fw-bold">Water</div>
+                                <div class="card-body py-2 small">
+                                    <div class="d-flex justify-content-between"><span>Availability</span><span>{{ ev.water_availability_rating|default:"—" }}/10</span></div>
+                                    <div class="d-flex justify-content-between"><span>Borewell</span><span>{% if ev.borewell_available %}Yes{% elif ev.borewell_available is False %}No{% else %}Unknown{% endif %}{% if ev.borewell_depth %} ({{ ev.borewell_depth }}ft){% endif %}</span></div>
+                                    <div class="d-flex justify-content-between"><span>River/Lake/Dam</span>
+                                        <span>
+                                            {% if ev.river_nearby %}<span class="badge bg-info">River</span>{% endif %}
+                                            {% if ev.lake_nearby %}<span class="badge bg-info">Lake</span>{% endif %}
+                                            {% if ev.dam_nearby %}<span class="badge bg-info">Dam</span>{% endif %}
+                                            {% if not ev.river_nearby and not ev.lake_nearby and not ev.dam_nearby %}—{% endif %}
+                                        </span>
+                                    </div>
+                                    {% if ev.water_comments %}<div class="text-muted mt-1">{{ ev.water_comments }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-header py-2 bg-warning text-dark small fw-bold">Access</div>
+                                <div class="card-body py-2 small">
+                                    <div class="d-flex justify-content-between"><span>Road Rating</span><span>{{ ev.road_access_rating|default:"—" }}/10</span></div>
+                                    <div class="d-flex justify-content-between"><span>Distance to Main Road</span><span>{{ ev.distance_to_main_road|default:"—" }} km</span></div>
+                                    {% if ev.internal_road_condition %}<div class="text-muted">{{ ev.internal_road_condition }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-header py-2 bg-success text-white small fw-bold">Legal</div>
+                                <div class="card-body py-2 small">
+                                    <div class="d-flex justify-content-between"><span>Title Clear</span><span>{% if ev.title_clear %}<span class="text-success">Yes</span>{% elif ev.title_clear is False %}<span class="text-danger">No</span>{% else %}—{% endif %}</span></div>
+                                    <div class="d-flex justify-content-between"><span>Mutation</span><span>{% if ev.mutation_complete %}<span class="text-success">Yes</span>{% elif ev.mutation_complete is False %}<span class="text-danger">No</span>{% else %}—{% endif %}</span></div>
+                                    <div class="d-flex justify-content-between"><span>Survey</span><span>{% if ev.survey_completed %}<span class="text-success">Yes</span>{% elif ev.survey_completed is False %}<span class="text-danger">No</span>{% else %}—{% endif %}</span></div>
+                                    {% if ev.encumbrances %}<div class="text-danger mt-1">{{ ev.encumbrances }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-header py-2 bg-info text-dark small fw-bold">Potential</div>
+                                <div class="card-body py-2 small">
+                                    <div class="d-flex justify-content-between"><span>Development</span><span>{{ ev.development_potential_rating|default:"—" }}/10</span></div>
+                                    <div class="d-flex justify-content-between"><span>Tourism</span><span>{{ ev.tourism_potential_rating|default:"—" }}/10</span></div>
+                                    <div class="d-flex justify-content-between"><span>Farming</span><span>{{ ev.farming_potential_rating|default:"—" }}/10</span></div>
+                                    <div class="d-flex justify-content-between"><span>Weekend Home</span><span>{{ ev.weekend_home_potential_rating|default:"—" }}/10</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-header py-2 bg-secondary text-white small fw-bold">Utilities</div>
+                                <div class="card-body py-2 small">
+                                    <div class="d-flex justify-content-between"><span>Electricity</span><span>{% if ev.electricity_available %}<span class="text-success">Yes</span>{% elif ev.electricity_available is False %}<span class="text-danger">No</span>{% else %}—{% endif %}</span></div>
+                                    <div class="d-flex justify-content-between"><span>Internet</span><span>{% if ev.internet_available %}<span class="text-success">Yes</span>{% elif ev.internet_available is False %}<span class="text-danger">No</span>{% else %}—{% endif %}</span></div>
+                                    <div class="d-flex justify-content-between"><span>Mobile Network</span><span>{{ ev.mobile_network_rating|default:"—" }}/5</span></div>
+                                    <div class="d-flex justify-content-between"><span>Terrain</span><span>{{ ev.get_terrain_type_display|default:"—" }}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-header py-2 bg-dark text-white small fw-bold">Environment</div>
+                                <div class="card-body py-2 small">
+                                    <div class="d-flex justify-content-between"><span>Tree Cover</span><span>{{ ev.tree_cover_rating|default:"—" }}/10</span></div>
+                                    <div class="d-flex justify-content-between"><span>Scenic Value</span><span>{{ ev.scenic_value_rating|default:"—" }}/10</span></div>
+                                    <div class="d-flex justify-content-between"><span>Pollution</span><span>{{ ev.pollution_rating|default:"—" }}/10 <small class="text-muted">(lower=better)</small></span></div>
+                                    <div class="d-flex justify-content-between"><span>Noise</span><span>{{ ev.noise_rating|default:"—" }}/10</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% else %}
+                    <p class="text-muted">No evaluation data. <a href="{% url 'properties:edit' property.slug %}">Edit property</a> to add it.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Distances -->
+                <div class="tab-pane fade" id="tab-distances">
+                    {% if property.distances %}
+                    {% with d=property.distances %}
+                    <div class="row row-cols-2 row-cols-md-3 g-3">
+                        {% if d.highway is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">Highway</div><div class="fw-bold">{{ d.highway }} km</div></div></div>{% endif %}
+                        {% if d.town is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">Town</div><div class="fw-bold">{{ d.town }} km</div></div></div>{% endif %}
+                        {% if d.dam is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">Dam</div><div class="fw-bold">{{ d.dam }} km</div></div></div>{% endif %}
+                        {% if d.hospital is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">Hospital</div><div class="fw-bold">{{ d.hospital }} km</div></div></div>{% endif %}
+                        {% if d.school is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">School</div><div class="fw-bold">{{ d.school }} km</div></div></div>{% endif %}
+                        {% if d.railway_station is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">Railway</div><div class="fw-bold">{{ d.railway_station }} km</div></div></div>{% endif %}
+                        {% if d.airport is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">Airport</div><div class="fw-bold">{{ d.airport }} km</div></div></div>{% endif %}
+                        {% if d.industrial_zone is not None %}<div class="col"><div class="card text-center py-2"><div class="small text-muted">Industrial Zone</div><div class="fw-bold">{{ d.industrial_zone }} km</div></div></div>{% endif %}
+                    </div>
+                    {% if d.future_infrastructure_notes %}
+                    <div class="mt-3">
+                        <h6 class="fw-semibold small">Future Infrastructure</h6>
+                        <p class="small">{{ d.future_infrastructure_notes }}</p>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                    {% else %}
+                    <p class="text-muted">No distance data. <a href="{% url 'properties:edit' property.slug %}">Edit property</a> to add it.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Visits -->
+                <div class="tab-pane fade" id="tab-visits">
+                    <div id="visit-section">
+                        {% include 'activity/partials/_visit_list.html' %}
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="tab-pane fade" id="tab-notes">
+                    <div id="note-section">
+                        {% include 'activity/partials/_note_list.html' %}
+                    </div>
+                </div>
+
+                <!-- Files -->
+                <div class="tab-pane fade" id="tab-files">
+                    <div id="attachment-section">
+                        {% include 'properties/partials/_attachment_list.html' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if GOOGLE_MAPS_API_KEY and property.latitude and property.longitude %}
+<script>
+function initDetailMap() {
+    const map = new google.maps.Map(document.getElementById('mini-map'), {
+        zoom: 14,
+        center: { lat: {{ property.latitude }}, lng: {{ property.longitude }} },
+        mapTypeId: 'hybrid',
+    });
+    new google.maps.Marker({
+        position: { lat: {{ property.latitude }}, lng: {{ property.longitude }} },
+        map: map,
+        title: '{{ property.name|escapejs }}',
+    });
+}
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initDetailMap"></script>
+{% endif %}
+
+<script>
+// Handle score compute button response
+document.addEventListener('htmx:afterRequest', function(e) {
+    if (e.detail.pathInfo && e.detail.pathInfo.requestPath && e.detail.pathInfo.requestPath.includes('compute-score')) {
+        try {
+            const data = JSON.parse(e.detail.xhr.response);
+            document.getElementById('score-display').textContent = data.investment_score ?? '—';
+        } catch(err) {}
+    }
+});
+</script>
+{% endblock %}
