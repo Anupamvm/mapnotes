@@ -6,8 +6,11 @@ app_name = 'properties'
 
 urlpatterns = [
     path('', views.PropertyListView.as_view(), name='list'),
+    path('chat/', views.PropertyChatView.as_view(), name='chat'),
+    path('quick-create/', views.PropertyQuickCreateView.as_view(), name='quick-create'),
     path('new/', views.PropertyCreateView.as_view(), name='create'),
     path('map/markers/', views.MapMarkersView.as_view(), name='map-markers'),
+    path('map/card-settings/', views.MapCardSettingsView.as_view(), name='map-card-settings'),
 
     path('<slug:slug>/', views.PropertyDetailView.as_view(), name='detail'),
     path('<slug:slug>/edit/', views.PropertyUpdateView.as_view(), name='edit'),

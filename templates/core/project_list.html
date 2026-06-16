@@ -23,7 +23,10 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <span class="badge bg-secondary">{{ project.get_project_type_display }}</span>
-                                <span class="badge bg-dark">{{ project.year }}</span>
+                                <div class="d-flex gap-1">
+                                    {% if project.is_default %}<span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Default</span>{% endif %}
+                                    <span class="badge bg-dark">{{ project.year }}</span>
+                                </div>
                             </div>
                             <h5 class="card-title fw-bold">{{ project.name }}</h5>
                             {% if project.description %}
@@ -37,6 +40,12 @@
                             <a href="{% url 'core:project-activate' project.slug %}" class="btn btn-success btn-sm flex-grow-1">
                                 <i class="bi bi-box-arrow-in-right me-1"></i>Enter
                             </a>
+                            <form method="post" action="{% url 'core:project-set-default' project.slug %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-warning btn-sm" title="Set as default map">
+                                    <i class="bi bi-{% if project.is_default %}star-fill text-warning{% else %}star{% endif %}"></i>
+                                </button>
+                            </form>
                             <a href="{% url 'core:project-edit' project.slug %}" class="btn btn-outline-secondary btn-sm">
                                 <i class="bi bi-pencil"></i>
                             </a>

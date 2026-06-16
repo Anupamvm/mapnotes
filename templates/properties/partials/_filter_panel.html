@@ -1,6 +1,13 @@
-<h6 class="fw-bold text-muted text-uppercase small mb-3">
-    <i class="bi bi-funnel me-1"></i>Filters
-</h6>
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h6 class="fw-bold text-muted text-uppercase small mb-0">
+        <i class="bi bi-funnel me-1"></i>Filters
+    </h6>
+    <button class="btn btn-link btn-sm p-0 text-muted text-decoration-none"
+            type="button" data-bs-toggle="collapse" data-bs-target="#card-fields-panel"
+            title="Map card fields">
+        <i class="bi bi-card-list"></i>
+    </button>
+</div>
 
 <form id="filter-form"
       hx-get="{% url 'properties:list' %}"
@@ -107,3 +114,17 @@
         <i class="bi bi-x-circle me-1"></i>Clear Filters
     </button>
 </form>
+
+<div class="collapse mt-3" id="card-fields-panel">
+    <hr class="mt-0">
+    <h6 class="fw-bold text-muted text-uppercase small mb-2">
+        <i class="bi bi-card-list me-1"></i>Map Card Fields
+    </h6>
+    <div hx-get="{% url 'properties:map-card-settings' %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <div class="text-center text-muted py-2 small">
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+        </div>
+    </div>
+</div>

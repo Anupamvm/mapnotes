@@ -1,12 +1,82 @@
-<div style="min-width:200px; max-width:260px;">
+<div style="min-width:210px; max-width:270px;">
     <div class="d-flex justify-content-between mb-1">
         <span class="badge bg-{{ property.priority_color }} small">{{ property.get_priority_display }}</span>
         <span class="badge bg-secondary small">{{ property.get_status_display }}</span>
     </div>
-    <strong class="d-block mb-1">{{ property.name }}</strong>
-    <div class="small text-muted mb-1">{{ property.district }}{% if property.taluka %}, {{ property.taluka }}{% endif %}</div>
-    {% if property.total_area %}<div class="small">{{ property.total_area }} {{ property.get_area_unit_display }}</div>{% endif %}
-    {% if property.asking_price %}<div class="small fw-semibold text-success">₹{{ property.asking_price|floatformat:0 }}</div>{% endif %}
-    {% if property.last_visit %}<div class="small text-muted mt-1">Last visit: {{ property.last_visit.visit_date }}</div>{% endif %}
+    <strong class="d-block mb-2">{{ property.name }}</strong>
+
+    {% if 'district' in visible_fields and property.district %}
+    <div class="small text-muted mb-1">
+        <i class="bi bi-geo-alt me-1"></i>{{ property.district }}{% if property.taluka %}, {{ property.taluka }}{% endif %}
+    </div>
+    {% endif %}
+
+    {% if 'village' in visible_fields and property.village %}
+    <div class="small text-muted mb-1">{{ property.village }}</div>
+    {% endif %}
+
+    {% if 'state' in visible_fields and property.state %}
+    <div class="small text-muted mb-1">{{ property.state }}</div>
+    {% endif %}
+
+    {% if 'total_area' in visible_fields and property.total_area %}
+    <div class="small mb-1"><i class="bi bi-bounding-box me-1"></i>{{ property.total_area }} {{ property.get_area_unit_display }}</div>
+    {% endif %}
+
+    {% if 'land_type' in visible_fields and property.land_type %}
+    <div class="small text-muted mb-1">{{ property.get_land_type_display }}</div>
+    {% endif %}
+
+    {% if 'asking_price' in visible_fields and property.asking_price or 'expected_negotiated_price' in visible_fields and property.expected_negotiated_price or 'price_per_acre' in visible_fields and property.price_per_acre or 'price_per_sqft' in visible_fields and property.price_per_sqft or 'estimated_market_value' in visible_fields and property.estimated_market_value %}
+    <div class="small border-top pt-1 mt-1">
+        {% if 'asking_price' in visible_fields and property.asking_price %}
+        <div class="fw-semibold text-success">Asking: ₹{{ property.asking_price|floatformat:0 }}</div>
+        {% endif %}
+        {% if 'expected_negotiated_price' in visible_fields and property.expected_negotiated_price %}
+        <div class="text-muted">Negotiated: ₹{{ property.expected_negotiated_price|floatformat:0 }}</div>
+        {% endif %}
+        {% if 'price_per_acre' in visible_fields and property.price_per_acre %}
+        <div class="text-muted">Per acre: ₹{{ property.price_per_acre|floatformat:0 }}</div>
+        {% endif %}
+        {% if 'price_per_sqft' in visible_fields and property.price_per_sqft %}
+        <div class="text-muted">Per sq.ft: ₹{{ property.price_per_sqft|floatformat:0 }}</div>
+        {% endif %}
+        {% if 'estimated_market_value' in visible_fields and property.estimated_market_value %}
+        <div class="text-muted">Market val: ₹{{ property.estimated_market_value|floatformat:0 }}</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if 'owner_name' in visible_fields and property.owner_name %}
+    <div class="small text-muted mt-1"><i class="bi bi-person me-1"></i>{{ property.owner_name }}</div>
+    {% endif %}
+
+    {% if 'agent_name' in visible_fields and property.agent_name %}
+    <div class="small text-muted mt-1"><i class="bi bi-person-badge me-1"></i>{{ property.agent_name }}{% if 'agent_phone' in visible_fields and property.agent_phone %} &middot; {{ property.agent_phone }}{% endif %}</div>
+    {% elif 'agent_phone' in visible_fields and property.agent_phone %}
+    <div class="small text-muted mt-1">{{ property.agent_phone }}</div>
+    {% endif %}
+
+    {% if 'investment_score' in visible_fields and property.investment_score %}
+    <div class="small mt-1">Score: <span class="fw-semibold">{{ property.investment_score }}/100</span></div>
+    {% endif %}
+
+    {% if 'distance_from_home_km' in visible_fields and property.distance_from_home_km %}
+    <div class="small text-muted mt-1">
+        <i class="bi bi-house-door me-1"></i>{{ property.distance_from_home_km }} km
+        {% if 'drive_time_minutes' in visible_fields and property.drive_time_minutes %}&middot; ~{{ property.drive_time_minutes }} min{% endif %}
+    </div>
+    {% elif 'drive_time_minutes' in visible_fields and property.drive_time_minutes %}
+    <div class="small text-muted mt-1"><i class="bi bi-clock me-1"></i>~{{ property.drive_time_minutes }} min drive</div>
+    {% endif %}
+
+    {% if 'last_visit' in visible_fields %}
+    {% with last=property.last_visit %}
+    {% if last %}
+    <div class="small text-muted mt-1"><i class="bi bi-calendar-check me-1"></i>Visited: {{ last.visit_date }}</div>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+
     <a href="{{ property.get_absolute_url }}" class="btn btn-sm btn-outline-primary mt-2 w-100">View Details</a>
 </div>

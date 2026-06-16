@@ -3,6 +3,23 @@ from django.db import models
 from django.utils.text import slugify
 
 
+class SiteSettings(models.Model):
+    home_address = models.CharField(
+        max_length=500,
+        default="Castle Royale Magnifique, A19, Tower 1, 23rd floor, near Joshi gate, Bopodi, Pune 411020, India",
+        help_text="Used as origin for travel distance calculations on properties.",
+    )
+
+    class Meta:
+        verbose_name = "Site Settings"
+        verbose_name_plural = "Site Settings"
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 PROJECT_TYPE_CHOICES = [
     ('agriculture', 'Agriculture / Farmland'),
     ('commercial', 'Commercial'),
@@ -19,6 +36,7 @@ class Project(models.Model):
     project_type = models.CharField(max_length=20, choices=PROJECT_TYPE_CHOICES, default='agriculture')
     year = models.PositiveSmallIntegerField(default=datetime.date.today().year)
     is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

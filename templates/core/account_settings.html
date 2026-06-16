@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Account Settings — MapNotes{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:620px;">
+
+    <h4 class="fw-bold mb-4">
+        <i class="bi bi-person-gear me-2 text-muted"></i>Account Settings
+    </h4>
+
+    <!-- Profile -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header fw-semibold">
+            <i class="bi bi-person me-2 text-muted"></i>Profile
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">First Name</label>
+                        <input type="text" name="first_name" class="form-control"
+                               value="{{ user.first_name }}" placeholder="First name">
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">Last Name</label>
+                        <input type="text" name="last_name" class="form-control"
+                               value="{{ user.last_name }}" placeholder="Last name">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Email Address</label>
+                        <input type="email" name="email" class="form-control"
+                               value="{{ user.email }}" placeholder="you@example.com">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold text-muted">Username</label>
+                        <input type="text" class="form-control bg-body-secondary" value="{{ user.username }}" disabled>
+                        <div class="form-text">Username cannot be changed.</div>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Home Address -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header fw-semibold">
+            <i class="bi bi-house-door me-2 text-muted"></i>Home Address
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">
+                Used as the starting point for calculating travel distance and drive time to each property.
+            </p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="home_address">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Address</label>
+                    <textarea name="home_address" class="form-control" rows="3"
+                              placeholder="Enter your home address">{{ site_settings.home_address }}</textarea>
+                    <div class="form-text">
+                        After updating, distances on new properties will be calculated from this address.
+                        Existing properties won't be recalculated automatically.
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="bi bi-check-lg me-1"></i>Update Address
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header fw-semibold">
+            <i class="bi bi-key me-2 text-muted"></i>Password
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">
+                Keep your account secure with a strong password.
+                {% if user.last_login %}
+                Last login was {{ user.last_login|date:"N j, Y" }} at {{ user.last_login|date:"g:i a" }}.
+                {% endif %}
+            </p>
+            <a href="{% url 'password_change' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-key me-1"></i>Change Password
+            </a>
+        </div>
+    </div>
+
+    <!-- Account info -->
+    <div class="card shadow-sm">
+        <div class="card-header fw-semibold">
+            <i class="bi bi-info-circle me-2 text-muted"></i>Account Info
+        </div>
+        <div class="card-body">
+            <dl class="row small mb-0">
+                <dt class="col-sm-4 text-muted">Member since</dt>
+                <dd class="col-sm-8">{{ user.date_joined|date:"F j, Y" }}</dd>
+                <dt class="col-sm-4 text-muted">Last login</dt>
+                <dd class="col-sm-8 mb-0">{{ user.last_login|date:"F j, Y, g:i a"|default:"—" }}</dd>
+            </dl>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

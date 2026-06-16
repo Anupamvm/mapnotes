@@ -3,12 +3,37 @@ from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.urls import reverse_lazy
 from django.db.models import Count, Avg, Q
 from django.http import JsonResponse
 
-from .models import Project
+from .models import Project, SiteSettings
 from .mixins import ActiveProjectMixin, HTMXMixin
+
+
+class AccountSettingsView(LoginRequiredMixin, View):
+    def get(self, request):
+        ctx = {'site_settings': SiteSettings.get()}
+        return render(request, 'core/account_settings.html', ctx)
+
+    def post(self, request):
+        action = request.POST.get('action', 'profile')
+
+        if action == 'home_address':
+            settings_obj = SiteSettings.get()
+            settings_obj.home_address = request.POST.get('home_address', '').strip()
+            settings_obj.save(update_fields=['home_address'])
+            messages.success(request, 'Home address updated.')
+        else:
+            user = request.user
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.email = request.POST.get('email', '').strip()
+            user.save(update_fields=['first_name', 'last_name', 'email'])
+            messages.success(request, 'Profile updated successfully.')
+
+        return redirect('core:account-settings')
 
 
 class ProjectListView(LoginRequiredMixin, ListView):
@@ -57,6 +82,17 @@ class ProjectActivateView(LoginRequiredMixin, View):
         return redirect('core:dashboard')
 
 
+class ProjectSetDefaultView(LoginRequiredMixin, View):
+    def post(self, request, slug):
+        Project.objects.update(is_default=False)
+        project = get_object_or_404(Project, slug=slug)
+        project.is_default = True
+        project.save(update_fields=['is_default'])
+        request.session['active_project_id'] = project.pk
+        messages.success(request, f'"{project.name}" is now your default map.')
+        return redirect('core:project-list')
+
+
 class DashboardView(LoginRequiredMixin, ActiveProjectMixin, TemplateView):
     template_name = 'core/dashboard.html'
 
@@ -75,6 +111,32 @@ class DashboardView(LoginRequiredMixin, ActiveProjectMixin, TemplateView):
         ctx['by_district'] = list(props.values('district').annotate(count=Count('id')).order_by('-count')[:8])
         ctx['recent_properties'] = props.select_related('evaluation').order_by('-updated_at')[:5]
         return ctx
+
+
+class DashboardPropsView(LoginRequiredMixin, ActiveProjectMixin, View):
+    def get(self, request):
+        props = self.project.properties.all()
+        filter_type = request.GET.get('filter', 'all')
+
+        if filter_type == 'visited':
+            qs = props.filter(status__in=['visited', 'under_discussion', 'due_diligence', 'negotiating', 'purchased'])
+            title = 'Visited Properties'
+        elif filter_type == 'hot':
+            qs = props.filter(priority='hot')
+            title = 'Hot Leads'
+        elif filter_type == 'negotiating':
+            qs = props.filter(status='negotiating')
+            title = 'Negotiating'
+        else:
+            qs = props
+            title = 'All Properties'
+
+        properties = qs.select_related('evaluation').order_by('-updated_at')[:20]
+        return render(request, 'core/partials/_dashboard_props.html', {
+            'properties': properties,
+            'filter_type': filter_type,
+            'title': title,
+        })
 
 
 class GlobalSearchView(LoginRequiredMixin, ActiveProjectMixin, TemplateView):

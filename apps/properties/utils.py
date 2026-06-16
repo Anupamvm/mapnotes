@@ -1,3 +1,54 @@
+import json
+import logging
+import urllib.parse
+import urllib.request
+
+logger = logging.getLogger(__name__)
+
+_HOME_ADDRESS_FALLBACK = "Castle Royale Magnifique, A19, Tower 1, 23rd floor, near Joshi gate, Bopodi, Pune 411020, India"
+
+
+def _get_home_address():
+    try:
+        from apps.core.models import SiteSettings
+        return SiteSettings.get().home_address or _HOME_ADDRESS_FALLBACK
+    except Exception:
+        return _HOME_ADDRESS_FALLBACK
+
+
+def fetch_distance_from_home(lat, lng):
+    """
+    Query Google Maps Distance Matrix API for driving distance/time from home.
+    Returns (distance_km: float, drive_minutes: int) or (None, None) on failure.
+    """
+    from django.conf import settings
+    api_key = getattr(settings, 'GOOGLE_MAPS_API_KEY', '')
+    if not api_key or not lat or not lng:
+        return None, None
+
+    params = urllib.parse.urlencode({
+        'origins': _get_home_address(),
+        'destinations': f'{lat},{lng}',
+        'mode': 'driving',
+        'key': api_key,
+    })
+    url = f'https://maps.googleapis.com/maps/api/distancematrix/json?{params}'
+
+    try:
+        with urllib.request.urlopen(url, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+        element = data['rows'][0]['elements'][0]
+        if element['status'] != 'OK':
+            logger.warning("Distance Matrix returned status: %s", element['status'])
+            return None, None
+        km = round(element['distance']['value'] / 1000, 1)
+        minutes = round(element['duration']['value'] / 60)
+        return km, minutes
+    except Exception:
+        logger.exception("Distance Matrix API error for (%s, %s)", lat, lng)
+        return None, None
+
+
 def compute_investment_score(prop):
     ev = getattr(prop, 'evaluation', None)
     if not ev:

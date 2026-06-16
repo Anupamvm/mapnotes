@@ -1,0 +1,902 @@
+{% extends 'base.html' %}
+{% block title %}Quick Add — MapNotes{% endblock %}
+
+{% block content %}
+<style>
+/* ── Page shell ──────────────────────────────────────────────────────────── */
+#chat-page {
+  position: fixed; top: 56px; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; background: var(--bs-body-bg);
+}
+#prog { height: 3px; background: var(--bs-border-color); flex-shrink: 0; }
+#prog-fill { height: 100%; background: #198754; width: 0; transition: width .4s; }
+
+/* ── Thread ──────────────────────────────────────────────────────────────── */
+#thread {
+  flex: 1; overflow-y: auto;
+  padding: 1.25rem 1rem 0.5rem;
+  display: flex; flex-direction: column; gap: 1rem;
+}
+.mrow { display: flex; gap: .6rem; align-items: flex-start; max-width: 760px; width: 100%; margin: 0 auto; }
+.mrow.urow { flex-direction: row-reverse; }
+.av { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700; margin-top: 3px; }
+.av-bot { background: #198754; color: #fff; }
+.av-usr { background: #0d6efd; color: #fff; }
+.bbl { padding: .55rem .8rem; border-radius: .9rem; font-size: .93rem; line-height: 1.55;
+  max-width: calc(100% - 40px); word-break: break-word; }
+.bbl-bot { background: var(--bs-secondary-bg); color: var(--bs-body-color); border-bottom-left-radius: .2rem; }
+.bbl-usr { background: #0d6efd; color: #fff; border-bottom-right-radius: .2rem; }
+.dots span { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--bs-secondary-color); margin: 0 2px; animation: blink 1.2s infinite; }
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2;transform:scale(.75)}40%{opacity:1;transform:scale(1)}}
+.file-thumb { max-width: 160px; max-height: 120px; border-radius: .4rem; display: block; margin-bottom: 4px; }
+.file-meta { font-size: .8rem; opacity: .85; }
+.rm-file { font-size: .72rem; background: rgba(255,255,255,.22); border: none;
+  border-radius: .3rem; padding: 1px 5px; color: #fff; cursor: pointer; margin-top: 2px; }
+
+/* ── Suggestions ─────────────────────────────────────────────────────────── */
+#sugs-wrap { max-width: 760px; margin: 0 auto; width: 100%; padding: .4rem 1rem 0; }
+#sugs { display: flex; flex-wrap: wrap; gap: .35rem; }
+.sc { padding: .32rem .8rem; border-radius: 2rem; font-size: .86rem;
+  border: 1.5px solid #198754; color: #198754; background: transparent;
+  cursor: pointer; transition: background .12s, color .12s; white-space: nowrap; }
+.sc:hover, .sc.hit { background: #198754; color: #fff; }
+[data-bs-theme=dark] .sc { color: #2dce89; border-color: #2dce89; }
+[data-bs-theme=dark] .sc:hover, [data-bs-theme=dark] .sc.hit { background: #2dce89; color: #000; }
+.sc.ms { border-color: #0d6efd; color: #0d6efd; }
+.sc.ms.hit { background: #0d6efd; color: #fff; }
+
+/* GPS */
+#gps-wrap { max-width: 760px; margin: 0 auto; width: 100%; padding: .4rem 1rem 0; display: none; }
+#gps-btn { width: 100%; padding: .55rem 1rem; border-radius: .7rem; font-size: .95rem; font-weight: 600; }
+
+/* ── Input bar ───────────────────────────────────────────────────────────── */
+#bar-wrap { max-width: 760px; margin: .35rem auto 0; width: 100%;
+  padding: 0 1rem; padding-bottom: max(env(safe-area-inset-bottom,0px),.75rem); flex-shrink: 0; }
+#bar { display: flex; align-items: flex-end; gap: .35rem;
+  background: var(--bs-secondary-bg); border: 1.5px solid var(--bs-border-color);
+  border-radius: .9rem; padding: .4rem .4rem .4rem .85rem; transition: border-color .2s; }
+#bar:focus-within { border-color: #198754; }
+#msg { flex: 1; border: none; background: transparent; resize: none; outline: none;
+  font-size: 1rem; line-height: 1.5; color: var(--bs-body-color);
+  max-height: 140px; overflow-y: auto; min-height: 1.5rem; padding: 0; }
+#msg::placeholder { color: var(--bs-secondary-color); }
+.bar-btn { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: .87rem; transition: background .15s; }
+#attach-btn { background: transparent; color: var(--bs-secondary-color); }
+#attach-btn:hover { color: #198754; }
+#send-btn { background: #198754; color: #fff; }
+#send-btn:disabled { background: var(--bs-border-color); cursor: default; opacity: .6; }
+#send-btn:not(:disabled):hover { background: #157347; }
+#hint { font-size: .74rem; color: var(--bs-secondary-color); text-align: center; margin-top: .25rem; min-height: .9rem; }
+
+/* ── Summary card ────────────────────────────────────────────────────────── */
+.sum-outer { border: 1.5px solid var(--bs-border-color); border-radius: .8rem; overflow: hidden; margin-top: .5rem; }
+.sum-tabs { display: flex; overflow-x: auto; background: var(--bs-secondary-bg);
+  border-bottom: 1.5px solid var(--bs-border-color); gap: 0; scrollbar-width: none; }
+.sum-tabs::-webkit-scrollbar { display: none; }
+.stab { padding: .45rem .75rem; font-size: .8rem; white-space: nowrap; cursor: pointer;
+  background: transparent; border: none; color: var(--bs-secondary-color);
+  border-bottom: 2.5px solid transparent; margin-bottom: -1.5px; transition: color .15s, border-color .15s; }
+.stab.on { color: #198754; border-bottom-color: #198754; font-weight: 600; }
+.sum-panel { display: none; padding: .75rem; background: var(--bs-body-bg); }
+.sum-panel.on { display: block; }
+.sr { display: flex; gap: .45rem; margin-bottom: .4rem; align-items: flex-start; }
+.sl { color: var(--bs-secondary-color); min-width: 80px; flex-shrink: 0; font-size: .76rem; padding-top: 2px; }
+.sv { font-weight: 500; font-size: .87rem; }
+.ic { padding: .2rem .6rem; border-radius: 1.5rem; font-size: .78rem;
+  border: 1.5px solid var(--bs-border-color); background: transparent;
+  cursor: pointer; color: var(--bs-body-color); margin: 2px;
+  transition: background .12s, color .12s, border-color .12s; }
+.ic.on { background: #198754; color: #fff; border-color: #198754; }
+.ic.ms.on { background: #0d6efd; border-color: #0d6efd; }
+.star-row { display: flex; align-items: center; gap: .25rem; }
+.star { font-size: 1.1rem; cursor: pointer; color: var(--bs-border-color); line-height: 1; transition: color .1s; }
+.star.on { color: #ffc107; }
+
+/* create button */
+.create-btn { width: 100%; padding: .65rem; border-radius: .7rem;
+  font-size: .97rem; font-weight: 700; margin-top: .7rem;
+  background: #198754; color: #fff; border: none; cursor: pointer; }
+.create-btn:hover:not(:disabled) { background: #157347; }
+.create-btn:disabled { opacity: .65; cursor: default; }
+.change-lnk { font-size: .77rem; color: #6c757d; cursor: pointer; text-decoration: underline; }
+
+/* note textarea */
+.quick-ta { font-size: 14px; border-radius: .5rem; resize: none; width: 100%; }
+</style>
+
+{{ projects|json_script:"pd" }}
+
+<div id="chat-page">
+  <div id="prog"><div id="prog-fill"></div></div>
+  <div id="thread"></div>
+
+  <div id="gps-wrap">
+    <button id="gps-btn" class="btn btn-success">
+      <i class="bi bi-geo-alt-fill me-2"></i>Use My Current Location
+    </button>
+  </div>
+
+  <div id="sugs-wrap"><div id="sugs"></div></div>
+
+  <div id="bar-wrap">
+    <div id="bar">
+      <label id="attach-btn" class="bar-btn mb-0" style="cursor:pointer;" title="Attach file">
+        <i class="bi bi-paperclip"></i>
+        <input id="file-inp" type="file" multiple
+               accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+               style="display:none;">
+      </label>
+      <textarea id="msg" rows="1" placeholder="Message…" style="font-size:16px;"></textarea>
+      <button id="send-btn" class="bar-btn" disabled>
+        <i class="bi bi-arrow-up"></i>
+      </button>
+    </div>
+    <div id="hint"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+/* ── Config ── */
+const CSRF       = '{{ csrf_token }}';
+const CREATE_URL = '{% url "properties:quick-create" %}';
+const UPLOAD_BASE = '/properties/';
+
+/* ── Data ── */
+const projects        = JSON.parse(document.getElementById('pd').textContent);
+const activeProjectId = {{ active_project_id|default:"null" }};
+
+/* ── State ── */
+const A  = { land_type: 'agricultural', priority: 'medium', status: 'to_visit', distances: {} };
+const fileQueue = [];
+const TOTAL = 11;  // steps for progress bar
+
+/* ── Unit conversion ── */
+const CONV = { acres: 1, guntha: 1/40, hectare: 2.47105, sqft: 1/43560, sqmeter: 1/4047 };
+function toAcres(n, unit) { return n * (CONV[unit] || 1); }
+function toSqft(acres) { return acres * 43560; }
+function toPricePerAcre(totalPrice, area, unit) {
+  const ac = toAcres(area, unit); return ac > 0 ? totalPrice / ac : null;
+}
+function toPricePerSqft(pricePerAcre) { return pricePerAcre ? pricePerAcre / 43560 : null; }
+function toPricePerGuntha(pricePerAcre) { return pricePerAcre ? pricePerAcre / 40 : null; }
+
+/* ── Parsers ── */
+function parseGMaps(t) {
+  const m = t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || t.match(/[?&]q=(-?\d+\.\d+)[,+](-?\d+\.\d+)/);
+  return m ? { lat: +m[1], lng: +m[2] } : null;
+}
+function parseMoney(t) {
+  const s = t.toLowerCase().replace(/[\s,₹]/g,'');
+  const n = parseFloat(s); if (!n) return null;
+  if (s.includes('cr')) return Math.round(n*1e7);
+  if (s.includes('l') || s.includes('lakh')) return Math.round(n*1e5);
+  if (s.includes('k')) return Math.round(n*1e3);
+  return n;
+}
+function parseRate(t) {
+  // Returns { amount, unit } where unit is 'sqft','acre','guntha','hectare'
+  const s = t.toLowerCase().replace(/[\s₹,]/g,'');
+  let amount = null;
+  const n = parseFloat(s); if (!n) return null;
+  if (s.includes('cr')) amount = n*1e7;
+  else if (s.includes('l') || s.includes('lakh')) amount = n*1e5;
+  else if (s.includes('k')) amount = n*1e3;
+  else amount = n;
+  let unit = 'sqft';
+  if (s.includes('acre')) unit = 'acre';
+  else if (s.includes('guntha') || s.includes('gunta')) unit = 'guntha';
+  else if (s.includes('hectare')) unit = 'hectare';
+  else if (s.includes('sqft') || s.includes('sqf') || s.includes('/sq') || s.includes('sft')) unit = 'sqft';
+  return { amount, unit };
+}
+function rateToComponents(amount, unit) {
+  let ppa, pps;
+  if (unit === 'acre') { ppa = amount; pps = amount/43560; }
+  else if (unit === 'guntha') { ppa = amount*40; pps = ppa/43560; }
+  else if (unit === 'hectare') { ppa = amount/2.47105; pps = ppa/43560; }
+  else { pps = amount; ppa = amount*43560; }  // sqft
+  return { price_per_acre: Math.round(ppa), price_per_sqft: Math.round(pps * 100) / 100 };
+}
+function fmtPrice(n) {
+  if (!n) return ''; n=+n;
+  if (n>=1e7) return '₹'+(n/1e7).toFixed(2).replace(/\.?0+$/,'')+'Cr';
+  if (n>=1e5) return '₹'+(n/1e5).toFixed(1).replace(/\.0$/,'')+'L';
+  return '₹'+Math.round(n).toLocaleString('en-IN');
+}
+function fmtBytes(b) { if(b<1048576)return(b/1024).toFixed(1)+'KB'; return(b/1048576).toFixed(1)+'MB'; }
+function classifyFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (file.type.startsWith('image/') || ['jpg','jpeg','png','gif','heic','webp'].includes(ext)) return 'photo';
+  if (file.type.startsWith('video/') || ['mp4','mov','avi','mkv','3gp'].includes(ext)) return 'video';
+  if (ext==='pdf') return 'pdf';
+  return 'document';
+}
+
+/* ── DOM refs ── */
+const thread  = document.getElementById('thread');
+const sugs    = document.getElementById('sugs');
+const gpsWrap = document.getElementById('gps-wrap');
+const gpsBtn  = document.getElementById('gps-btn');
+const msg     = document.getElementById('msg');
+const sendBtn = document.getElementById('send-btn');
+const hint    = document.getElementById('hint');
+const pfill   = document.getElementById('prog-fill');
+
+/* ── Helpers ── */
+const setProgress = n => pfill.style.width = Math.round(n/TOTAL*100)+'%';
+const scrollEnd   = () => thread.scrollTop = thread.scrollHeight;
+const clearSugs   = () => { sugs.innerHTML=''; gpsWrap.style.display='none'; };
+const setHint     = t  => hint.textContent = t||'';
+
+/* ── Messaging ── */
+function typing() {
+  const r=document.createElement('div'); r.className='mrow';
+  r.innerHTML=`<div class="av av-bot">M</div><div class="bbl bbl-bot"><div class="dots"><span></span><span></span><span></span></div></div>`;
+  thread.appendChild(r); scrollEnd(); return r;
+}
+function botSay(html, delay=420) {
+  return new Promise(ok => {
+    const r=typing();
+    setTimeout(()=>{ r.querySelector('.bbl').innerHTML=html; scrollEnd(); ok(r); }, delay);
+  });
+}
+function userSay(text) {
+  const r=document.createElement('div'); r.className='mrow urow';
+  r.innerHTML=`<div class="av av-usr">U</div><div class="bbl bbl-usr">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`;
+  thread.appendChild(r); scrollEnd();
+}
+
+/* ── File handling ── */
+document.getElementById('file-inp').addEventListener('change', e => {
+  Array.from(e.target.files).forEach(file => {
+    const type=classifyFile(file), id=Date.now()+Math.random();
+    const objUrl=file.type.startsWith('image/')?URL.createObjectURL(file):null;
+    fileQueue.push({file,type,id,objUrl}); showFile({file,type,id,objUrl});
+  }); e.target.value='';
+});
+function showFile({file,type,id,objUrl}) {
+  const icon={photo:'📷',video:'🎬',pdf:'📄',document:'📁',survey_map:'🗺️'}[type]||'📁';
+  const r=document.createElement('div'); r.className='mrow urow'; r.dataset.fid=id;
+  r.innerHTML=`<div class="av av-usr">U</div>
+    <div class="bbl bbl-usr" style="padding:.45rem .7rem;">
+      ${objUrl?`<img src="${objUrl}" class="file-thumb" alt="${file.name}">`:''}
+      <div class="file-meta">${icon} <strong>${type}</strong> · ${file.name}</div>
+      <div class="file-meta">${fmtBytes(file.size)} — attaches after creation</div>
+      <button class="rm-file" data-id="${id}">✕ Remove</button>
+    </div>`;
+  r.querySelector('.rm-file').addEventListener('click',function(){
+    const fid=+this.dataset.id, idx=fileQueue.findIndex(f=>f.id===fid);
+    if(idx>-1){if(fileQueue[idx].objUrl)URL.revokeObjectURL(fileQueue[idx].objUrl);fileQueue.splice(idx,1);}
+    r.remove();
+  });
+  thread.appendChild(r); scrollEnd();
+}
+
+/* ── Input ── */
+let onSend=null;
+function enableInput(placeholder,handler,hintText='') {
+  msg.value=''; msg.placeholder=placeholder; msg.style.height='auto';
+  onSend=handler; sendBtn.disabled=true; setHint(hintText);
+  setTimeout(()=>msg.focus(),80);
+}
+function disableInput(){onSend=null; sendBtn.disabled=true;}
+msg.addEventListener('input',()=>{ msg.style.height='auto'; msg.style.height=msg.scrollHeight+'px'; sendBtn.disabled=!msg.value.trim(); });
+msg.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault(); if(!sendBtn.disabled&&onSend)fire();} });
+sendBtn.addEventListener('click',()=>{ if(!sendBtn.disabled&&onSend)fire(); });
+function fire(){const v=msg.value.trim();if(!v)return; msg.value=''; msg.style.height='auto'; sendBtn.disabled=true; onSend(v);}
+
+/* ── Chips ── */
+function showChips(items, onPick, opts={}) {
+  sugs.innerHTML='';
+  items.forEach(item=>{
+    const b=document.createElement('button');
+    b.className='sc'+(item.multi?' ms':'');
+    b.textContent=item.label;
+    b.addEventListener('click',()=>{
+      if(!opts.multi){document.querySelectorAll('.sc').forEach(s=>s.classList.remove('hit'));}
+      b.classList.toggle('hit');
+      if(!opts.multi) setTimeout(()=>onPick(item),120);
+    });
+    sugs.appendChild(b);
+  });
+  if(opts.multi){
+    const ok=document.createElement('button');
+    ok.className='sc'; ok.textContent='Done ✓';
+    ok.style.cssText='border-color:#0d6efd;color:#0d6efd;';
+    ok.addEventListener('click',()=>{
+      const sel=Array.from(sugs.querySelectorAll('.sc.hit:not(:last-child)'));
+      onPick(sel.map(b=>items.find(x=>x.label===b.textContent)));
+    });
+    sugs.appendChild(ok);
+  }
+  scrollEnd();
+}
+
+/* ── Project ── */
+function resolveProject() {
+  if(activeProjectId) return projects.find(p=>p.id===activeProjectId)||null;
+  return projects.find(p=>p.is_default)||projects[0]||null;
+}
+
+/* ═══ STEPS ═══════════════════════════════════════════════════════════════ */
+
+async function start() {
+  setProgress(0); disableInput(); clearSugs();
+  const preset=resolveProject();
+  if(preset){
+    A.project_id=preset.id; A.project_name=preset.name;
+    const r=await botSay(`Hi! I'll add this to <strong>${preset.name}</strong> ✓<br><span class="change-lnk" id="chg">Change map →</span>`);
+    r.querySelector('#chg').addEventListener('click',()=>{r.remove();stepMap();});
+    setTimeout(stepName,280);
+  } else stepMap();
+}
+
+/* 0 — Map */
+async function stepMap() {
+  setProgress(0); disableInput(); clearSugs();
+  await botSay('Which map are you adding this property to?');
+  if(!projects.length){await botSay('No active maps found. <a href="/">Create one first →</a>');return;}
+  showChips(projects.map(p=>({label:(p.is_default?'⭐ ':'')+p.name,id:p.id,name:p.name})),
+    item=>{A.project_id=item.id;A.project_name=item.name;userSay(item.name);clearSugs();stepName();});
+}
+
+/* 1 — Name */
+async function stepName() {
+  setProgress(1); clearSugs();
+  await botSay('What do you call this property?<br><small class="text-muted">Nickname, survey number or area name</small>');
+  enableInput('e.g. Pawna Hills Plot, S.No.45…',v=>{A.name=v;userSay(v);disableInput();stepLocation();});
+}
+
+/* 2 — Location */
+async function stepLocation() {
+  setProgress(2);
+  await botSay('Where is it?<br><small class="text-muted">Tap GPS, paste a Google Maps link, or type the village name</small>');
+  gpsWrap.style.display='block';
+  showChips([{label:'Skip →'}],()=>{userSay('Location skipped');clearSugs();disableInput();stepArea();});
+  enableInput('Paste Maps link, village, or address…',v=>{
+    const c=parseGMaps(v);
+    if(c){A.latitude=c.lat;A.longitude=c.lng;userSay('📍 '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));}
+    else{A.full_address=v;userSay(v);}
+    clearSugs();disableInput();stepArea();
+  },'Tap GPS button above · Shift+Enter for new line');
+}
+gpsBtn.addEventListener('click',function(){
+  gpsBtn.disabled=true; gpsBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Getting…';
+  navigator.geolocation.getCurrentPosition(
+    pos=>{A.latitude=pos.coords.latitude;A.longitude=pos.coords.longitude;
+      userSay('📍 '+A.latitude.toFixed(5)+', '+A.longitude.toFixed(5));
+      clearSugs();disableInput();stepArea();},
+    ()=>{gpsBtn.disabled=false;gpsBtn.innerHTML='<i class="bi bi-geo-alt-fill me-2"></i>Use My Current Location';
+      botSay('Could not get location — type it instead.',200);},
+    {timeout:8000}
+  );
+});
+
+/* 3 — Area */
+let selUnit='acres';
+const AREA_CHIPS=[
+  {label:'½ Acre',a:.5,u:'acres'},{label:'1 Acre',a:1,u:'acres'},{label:'2 Acres',a:2,u:'acres'},
+  {label:'5 Acres',a:5,u:'acres'},{label:'10 Acres',a:10,u:'acres'},{label:'20 Acres',a:20,u:'acres'},
+  {label:'20 Guntha',a:20,u:'guntha'},{label:'40 Guntha',a:40,u:'guntha'},{label:'1 Hectare',a:1,u:'hectare'},
+];
+async function stepArea() {
+  setProgress(3); selUnit='acres';
+  await botSay('How big is it?<br><small class="text-muted">Tap a common size or type e.g. <em>5 acres</em>, <em>20 guntha</em></small>');
+  showChips(AREA_CHIPS,item=>{A.total_area=item.a;A.area_unit=item.u;userSay(item.label);clearSugs();disableInput();stepPrice();});
+  // Unit selector lives INSIDE sugs so clearSugs() removes it automatically
+  const unitRow=document.createElement('div');
+  unitRow.style.cssText='display:flex;flex-wrap:wrap;gap:.3rem;width:100%;margin-top:.35rem;padding-top:.35rem;border-top:1px solid var(--bs-border-color);';
+  ['acres','guntha','hectare','sqft'].forEach(u=>{
+    const b=document.createElement('button');
+    b.className='sc'+(u==='acres'?' hit':'');
+    b.style.cssText='font-size:.76rem;padding:.2rem .6rem;';
+    b.textContent=u.charAt(0).toUpperCase()+u.slice(1);
+    b.addEventListener('click',()=>{unitRow.querySelectorAll('.sc').forEach(s=>s.classList.remove('hit'));b.classList.add('hit');selUnit=u;});
+    unitRow.appendChild(b);
+  });
+  sugs.appendChild(unitRow);
+  enableInput('e.g. 5 acres, 20 guntha, 2 hectare…',v=>{
+    const m=v.match(/^(\d+\.?\d*)\s*(acres?|guntha|gunta|hectares?|sqft|sq\.?ft)?/i);
+    if(m){A.total_area=+m[1];let u=(m[2]||selUnit).toLowerCase();
+      if(u==='acre'||u==='acres')u='acres';else if(u==='gunta')u='guntha';else if(u.startsWith('hectare'))u='hectare';
+      A.area_unit=u;userSay(A.total_area+' '+A.area_unit);}else userSay(v);
+    clearSugs();disableInput();stepPrice();
+  },'Select unit above, then type the number');
+}
+
+/* 4 — Total Price */
+const PRICE_CHIPS=[
+  {label:'25L',p:2500000},{label:'50L',p:5000000},{label:'75L',p:7500000},{label:'1Cr',p:10000000},
+  {label:'1.5Cr',p:15000000},{label:'2Cr',p:20000000},{label:'3Cr',p:30000000},{label:'5Cr',p:50000000},
+  {label:'Skip →',p:null},
+];
+async function stepPrice() {
+  setProgress(4);
+  await botSay('What\'s the total asking price?<br><small class="text-muted">Tap a quick amount or type e.g. <em>80L</em>, <em>1.2Cr</em></small>');
+  showChips(PRICE_CHIPS,item=>{
+    if(item.p){A.asking_price=item.p;userSay(fmtPrice(item.p));}else userSay('Price skipped');
+    clearSugs();disableInput();stepQuoteRate();
+  });
+  enableInput('e.g. 80L, 1.2Cr, 45 lakh…',v=>{
+    const n=parseMoney(v);
+    if(n){A.asking_price=n;userSay(fmtPrice(n));}else userSay(v||'Skipped');
+    clearSugs();disableInput();stepQuoteRate();
+  },'Tap a chip or type a custom amount');
+}
+
+/* 5 — Quoting Rate */
+let selRateUnit = 'acre';
+async function stepQuoteRate() {
+  setProgress(5); selRateUnit = 'acre';
+
+  // Auto-suggest complete rates from price + area
+  let autoChips = [];
+  if (A.asking_price && A.total_area) {
+    const ppa = toPricePerAcre(A.asking_price, A.total_area, A.area_unit);
+    if (ppa) {
+      const pps = toPricePerSqft(ppa);
+      const ppg = toPricePerGuntha(ppa);
+      autoChips = [
+        { label: fmtPrice(Math.round(ppa))+'/acre',   ppa: Math.round(ppa), pps: Math.round(pps*100)/100 },
+        { label: fmtPrice(Math.round(ppg))+'/guntha',  ppa: Math.round(ppa), pps: Math.round(pps*100)/100 },
+        { label: fmtPrice(Math.round(pps))+'/sqft',    ppa: Math.round(ppa), pps: Math.round(pps*100)/100 },
+      ];
+    }
+  }
+
+  await botSay('What\'s the quoting rate?<br><small class="text-muted">Type the amount, then tap the unit — or tap a suggested rate below</small>');
+
+  sugs.innerHTML = '';
+
+  // Row 1: auto-suggested complete rates (if available)
+  if (autoChips.length) {
+    const sugRow = document.createElement('div');
+    sugRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem;padding-bottom:.4rem;border-bottom:1px solid var(--bs-border-color);';
+    autoChips.forEach(item => {
+      const b = document.createElement('button'); b.className = 'sc'; b.textContent = item.label;
+      b.addEventListener('click', () => {
+        A.price_per_acre = item.ppa; A.price_per_sqft = item.pps;
+        userSay(item.label); clearSugs(); disableInput(); stepContact();
+      });
+      sugRow.appendChild(b);
+    });
+    sugs.appendChild(sugRow);
+  }
+
+  // Row 2: unit picker — tap to select, then type the number
+  const RATE_UNITS = [
+    { label: '/acre', u: 'acre' }, { label: '/guntha', u: 'guntha' },
+    { label: '/sqft', u: 'sqft' }, { label: '/hectare', u: 'hectare' },
+  ];
+  const unitRow = document.createElement('div');
+  unitRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.3rem;';
+  RATE_UNITS.forEach(item => {
+    const b = document.createElement('button');
+    b.className = 'sc' + (item.u === 'acre' ? ' hit' : '');
+    b.style.cssText = 'border-color:#0d6efd;color:#0d6efd;font-weight:600;';
+    b.classList.toggle('hit', item.u === 'acre');
+    if (item.u === 'acre') { b.style.background = '#0d6efd'; b.style.color = '#fff'; }
+    b.textContent = item.label;
+    b.addEventListener('click', () => {
+      unitRow.querySelectorAll('.sc').forEach(s => {
+        s.classList.remove('hit'); s.style.background = ''; s.style.color = '#0d6efd';
+      });
+      b.classList.add('hit'); b.style.background = '#0d6efd'; b.style.color = '#fff';
+      selRateUnit = item.u;
+      msg.focus();
+    });
+    unitRow.appendChild(b);
+  });
+  const skipB = document.createElement('button');
+  skipB.className = 'sc'; skipB.textContent = 'Skip →';
+  skipB.addEventListener('click', () => { userSay('Rate skipped'); clearSugs(); disableInput(); stepContact(); });
+  unitRow.appendChild(skipB);
+  sugs.appendChild(unitRow);
+
+  scrollEnd();
+  enableInput('Type amount e.g. 30L, 500, 1.2Cr…', v => {
+    const n = parseMoney(v);
+    if (n) {
+      const c = rateToComponents(n, selRateUnit);
+      A.price_per_acre = c.price_per_acre; A.price_per_sqft = c.price_per_sqft;
+      userSay(fmtPrice(n) + ' ' + selRateUnit);
+    } else { userSay('Rate skipped'); }
+    clearSugs(); disableInput(); stepContact();
+  }, '/acre selected — tap a unit above to change, then Enter');
+}
+
+/* 6 — Contact */
+async function stepContact() {
+  setProgress(6);
+  await botSay('Agent or owner contact?<br><small class="text-muted">e.g. <em>Ramesh 9876543210</em></small>');
+  showChips([{label:'Skip →'}],()=>{userSay('Contact skipped');clearSugs();disableInput();stepWater();});
+  enableInput('Name + phone number…',v=>{
+    const phone=(v.match(/\b(\d{10})\b/)||[''])[1];
+    A.agent_name=v.replace(phone,'').replace(/[,;.\s]+$/,'').trim();
+    A.agent_phone=phone||'';userSay(v);clearSugs();disableInput();stepWater();
+  },'Or tap Skip');
+}
+
+/* 7 — Water */
+const WATER_OPTS=[
+  {label:'🌊 River nearby',key:'river_nearby'},{label:'🪣 Borewell',key:'borewell_available'},
+  {label:'🏞 Lake nearby',key:'lake_nearby'},{label:'🌊 Dam nearby',key:'dam_nearby'},
+  {label:'❌ No water source',key:'none'},
+];
+async function stepWater() {
+  setProgress(7);
+  await botSay('Water sources? <small class="text-muted">(Select all that apply)</small>');
+  showChips(WATER_OPTS,items=>{
+    items.forEach(item=>{if(item&&item.key!=='none')A[item.key]=true;});
+    const sel=items.filter(Boolean);
+    userSay(sel.length?sel.map(x=>x.label).join(', '):'None');
+    clearSugs();disableInput();stepRoad();
+  },{multi:true});
+}
+
+/* 8 — Road & Terrain */
+async function stepRoad() {
+  setProgress(8);
+  await botSay('Road access & terrain?');
+  const roadChips=[
+    {label:'⭐⭐⭐ Excellent road',road:9},{label:'⭐⭐ Good road',road:7},
+    {label:'⭐ Basic road',road:5},{label:'🚫 No road',road:2},
+  ];
+  const terrainChips=[
+    {label:'🏔 Flat',t:'flat'},{label:'📐 Gentle slope',t:'sloped'},
+    {label:'⛰ Hilly',t:'hilly'},{label:'🪨 Rocky',t:'rocky'},
+  ];
+  // Show road then terrain as two rows
+  sugs.innerHTML='';
+  let roadVal=null;
+  const makeRow=(items,onPick)=>{
+    const wrap=document.createElement('div');
+    wrap.style.cssText='display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;';
+    items.forEach(item=>{
+      const b=document.createElement('button');b.className='sc';b.textContent=item.label;
+      b.addEventListener('click',()=>{wrap.querySelectorAll('.sc').forEach(s=>s.classList.remove('hit'));b.classList.add('hit');onPick(item);});
+      wrap.appendChild(b);
+    });
+    sugs.appendChild(wrap);
+  };
+  makeRow(roadChips,item=>{roadVal=item.road;A.road_access_rating=item.road;});
+  makeRow(terrainChips,item=>{A.terrain_type=item.t;});
+
+  // Done button
+  const done=document.createElement('button');done.className='sc';done.textContent='Done ✓';
+  done.style.cssText='border-color:#0d6efd;color:#0d6efd;margin-top:.2rem;';
+  done.addEventListener('click',()=>{
+    userSay([roadVal?roadChips.find(x=>x.road===roadVal)?.label:'',A.terrain_type||''].filter(Boolean).join(', ')||'Skipped');
+    clearSugs();disableInput();stepElectricity();
+  });
+  sugs.appendChild(done);
+  scrollEnd(); disableInput(); setHint('Tap Done when selected');
+}
+
+/* 9 — Electricity & Legal */
+async function stepElectricity() {
+  setProgress(9);
+  await botSay('Electricity & legal status?');
+  const row1=[{label:'⚡ Electricity available',key:'electricity_available'},{label:'📡 Internet/mobile ok',key:'internet_available'}];
+  const row2=[{label:'✅ Title clear',key:'title_clear'},{label:'✅ Mutation done',key:'mutation_complete'},{label:'✅ Survey done',key:'survey_completed'}];
+
+  sugs.innerHTML='';
+  const mkRow=(items)=>{
+    const wrap=document.createElement('div');
+    wrap.style.cssText='display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;';
+    items.forEach(item=>{
+      const b=document.createElement('button');b.className='sc ms';b.textContent=item.label;
+      b.addEventListener('click',()=>{ b.classList.toggle('hit'); A[item.key]=b.classList.contains('hit')||null; });
+      wrap.appendChild(b);
+    });
+    sugs.appendChild(wrap);
+  };
+  mkRow(row1); mkRow(row2);
+  const done=document.createElement('button');done.className='sc';done.textContent='Done ✓';
+  done.style.cssText='border-color:#0d6efd;color:#0d6efd;';
+  done.addEventListener('click',()=>{
+    const sel=Array.from(sugs.querySelectorAll('.sc.hit')).map(b=>b.textContent);
+    userSay(sel.length?sel.join(', '):'Skipped');
+    clearSugs();disableInput();stepPotential();
+  });
+  sugs.appendChild(done); scrollEnd(); disableInput(); setHint('Tap items then Done');
+}
+
+/* 10 — Potential */
+const POT_FIELDS=[
+  {key:'development_potential_rating',label:'🏗 Development'},
+  {key:'farming_potential_rating',label:'🌾 Farming'},
+  {key:'tourism_potential_rating',label:'🏕 Tourism'},
+  {key:'weekend_home_potential_rating',label:'🏡 Weekend Home'},
+];
+async function stepPotential() {
+  setProgress(10);
+  await botSay('Rate the potential (1–5 each):<br><small class="text-muted">Tap a number for each category</small>');
+  sugs.innerHTML='';
+  POT_FIELDS.forEach(f=>{
+    const wrap=document.createElement('div');
+    wrap.style.cssText='display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem;flex-wrap:wrap;';
+    const lbl=document.createElement('span');
+    lbl.style.cssText='font-size:.83rem;min-width:120px;color:var(--bs-secondary-color);';
+    lbl.textContent=f.label;
+    wrap.appendChild(lbl);
+    [1,2,3,4,5].forEach(n=>{
+      const b=document.createElement('button');b.className='sc';
+      b.style.cssText='padding:.22rem .6rem;font-size:.82rem;';
+      b.textContent=n;
+      b.addEventListener('click',()=>{
+        wrap.querySelectorAll('.sc').forEach(s=>s.classList.remove('hit'));
+        b.classList.add('hit'); A[f.key]=n;
+      });
+      wrap.appendChild(b);
+    });
+    sugs.appendChild(wrap);
+  });
+  const skip=document.createElement('button');skip.className='sc';skip.textContent='Skip →';
+  skip.addEventListener('click',()=>{userSay('Potential skipped');clearSugs();disableInput();stepSummary();});
+  const done=document.createElement('button');done.className='sc';done.textContent='Done ✓';
+  done.style.cssText='border-color:#0d6efd;color:#0d6efd;';
+  done.addEventListener('click',()=>{
+    const scored=POT_FIELDS.filter(f=>A[f.key]).map(f=>f.label.split(' ').slice(1).join(' ')+': '+A[f.key]);
+    userSay(scored.length?scored.join(', '):'Skipped');
+    clearSugs();disableInput();stepSummary();
+  });
+  const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:.35rem;margin-top:.2rem;';
+  btnRow.appendChild(skip); btnRow.appendChild(done); sugs.appendChild(btnRow);
+  scrollEnd(); disableInput(); setHint('Rate each, then tap Done');
+}
+
+/* 11 — Summary */
+const TYPES={agricultural:'🌾 Agri',na:'🏗 NA Plot',residential:'🏠 Residential',commercial:'🏪 Commercial',industrial:'🏭 Industrial',mixed:'🔀 Mixed'};
+const PRIS={hot:'🔥 Hot',high:'⬆ High',medium:'● Medium',low:'↓ Low'};
+const STATUSES={to_visit:'📋 To Visit',visited:'✅ Visited',under_discussion:'💬 Discussing',due_diligence:'🔍 Due Diligence',negotiating:'🤝 Negotiating',purchased:'🏆 Purchased',rejected:'❌ Rejected'};
+
+function icGroup(obj, activeKey, onChange) {
+  return Object.entries(obj).map(([k,v])=>
+    `<button class="ic${activeKey===k?' on':''}" data-k="${k}">${v}</button>`
+  ).join('');
+}
+function attachIcGroup(parent, cls, onChange) {
+  parent.querySelectorAll(cls).forEach(b=>b.addEventListener('click',()=>{
+    parent.querySelectorAll(cls).forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); onChange(b.dataset.k);
+  }));
+}
+function starWidget(fieldKey, currentVal, label) {
+  const id='s_'+fieldKey;
+  return `<div class="sr"><span class="sl">${label}</span>
+    <div class="star-row" id="${id}">
+      ${[1,2,3,4,5].map(n=>`<span class="star${(currentVal||0)>=n?' on':''}" data-n="${n}" data-f="${fieldKey}">★</span>`).join('')}
+    </div></div>`;
+}
+
+async function stepSummary() {
+  setProgress(11); clearSugs(); disableInput();
+  const loc=A.latitude?`📍 ${(+A.latitude).toFixed(5)}, ${(+A.longitude).toFixed(5)}`:(A.full_address||'—');
+  const area=A.total_area?`${A.total_area} ${A.area_unit}`:'—';
+  const ppa=A.price_per_acre?fmtPrice(A.price_per_acre)+'/acre':'';
+  const pps=A.price_per_sqft?fmtPrice(A.price_per_sqft)+'/sqft':'';
+  const ppg=A.price_per_acre?fmtPrice(Math.round(A.price_per_acre/40))+'/guntha':'';
+
+  const html=`
+<div class="sum-outer">
+<div class="sum-tabs">
+  <button class="stab on" data-tab="basic">📍 Basic</button>
+  <button class="stab" data-tab="pricing">💰 Pricing</button>
+  <button class="stab" data-tab="site">🌿 Site</button>
+  <button class="stab" data-tab="legal">⚖️ Legal</button>
+  <button class="stab" data-tab="potential">🚀 Potential</button>
+  <button class="stab" data-tab="files">📎 Files</button>
+  <button class="stab" data-tab="notes">📝 Notes</button>
+</div>
+
+<!-- BASIC -->
+<div class="sum-panel on" data-panel="basic">
+  <div class="sr"><span class="sl">Map</span><span class="sv">${A.project_name||'—'}</span></div>
+  <div class="sr"><span class="sl">Name</span><span class="sv">${A.name||'—'}</span></div>
+  <div class="sr"><span class="sl">Location</span><span class="sv">${loc}</span></div>
+  <div class="sr"><span class="sl">Area</span><span class="sv">${area}</span></div>
+  <div class="sr"><span class="sl">Type</span><div>${icGroup(TYPES,A.land_type)}</div></div>
+  <div class="sr"><span class="sl">Priority</span><div class="pri-grp">${icGroup(PRIS,A.priority)}</div></div>
+  <div class="sr"><span class="sl">Status</span><div class="sts-grp">${icGroup(STATUSES,A.status)}</div></div>
+  ${A.agent_name||A.agent_phone?`<div class="sr"><span class="sl">Contact</span><span class="sv">${[A.agent_name,A.agent_phone].filter(Boolean).join(' · ')}</span></div>`:''}
+</div>
+
+<!-- PRICING -->
+<div class="sum-panel" data-panel="pricing">
+  <div class="sr"><span class="sl">Asking</span><span class="sv">${A.asking_price?fmtPrice(A.asking_price):'—'}</span></div>
+  <div class="sr"><span class="sl">Per Acre</span><span class="sv" id="show-ppa">${ppa||'—'}</span></div>
+  <div class="sr"><span class="sl">Per Guntha</span><span class="sv" id="show-ppg">${ppg||'—'}</span></div>
+  <div class="sr"><span class="sl">Per Sqft</span><span class="sv" id="show-pps">${pps||'—'}</span></div>
+  <p class="text-muted" style="font-size:.75rem;margin-top:.5rem;">Rates auto-calculated. Tap to edit in the property page after creation.</p>
+</div>
+
+<!-- SITE -->
+<div class="sum-panel" data-panel="site">
+  <div class="sr"><span class="sl">Road</span><div>
+    ${[{v:9,l:'⭐⭐⭐ Excellent'},{v:7,l:'⭐⭐ Good'},{v:5,l:'⭐ Basic'},{v:2,l:'🚫 None'}]
+      .map(x=>`<button class="ic road-ic${A.road_access_rating===x.v?' on':''}" data-v="${x.v}">${x.l}</button>`).join('')}
+  </div></div>
+  <div class="sr"><span class="sl">Terrain</span><div>
+    ${[{v:'flat',l:'🏔 Flat'},{v:'sloped',l:'📐 Slope'},{v:'hilly',l:'⛰ Hilly'},{v:'rocky',l:'🪨 Rocky'}]
+      .map(x=>`<button class="ic terr-ic${A.terrain_type===x.v?' on':''}" data-v="${x.v}">${x.l}</button>`).join('')}
+  </div></div>
+  <div class="sr"><span class="sl">Water</span><div>
+    ${[{v:'river_nearby',l:'🌊 River'},{v:'borewell_available',l:'🪣 Borewell'},{v:'lake_nearby',l:'🏞 Lake'},{v:'dam_nearby',l:'🌊 Dam'}]
+      .map(x=>`<button class="ic ms water-ic${A[x.v]?' on':''}" data-v="${x.v}">${x.l}</button>`).join('')}
+  </div></div>
+  <div class="sr"><span class="sl">Electricity</span><div>
+    <button class="ic elec-ic${A.electricity_available===true?' on':''}" data-v="1">⚡ Yes</button>
+    <button class="ic elec-ic${A.electricity_available===false?' on':''}" data-v="0">❌ No</button>
+    <button class="ic elec-ic${A.electricity_available==null?' on':''}" data-v="null">❓ Unknown</button>
+  </div></div>
+</div>
+
+<!-- LEGAL -->
+<div class="sum-panel" data-panel="legal">
+  ${[{k:'title_clear',l:'Title Clear'},{k:'mutation_complete',l:'Mutation Done'},{k:'survey_completed',l:'Survey Done'}].map(f=>`
+  <div class="sr"><span class="sl">${f.l}</span><div>
+    <button class="ic legal-ic${A[f.k]===true?' on':''}" data-f="${f.k}" data-v="true">✅ Yes</button>
+    <button class="ic legal-ic${A[f.k]===false?' on':''}" data-f="${f.k}" data-v="false">❌ No</button>
+    <button class="ic legal-ic${A[f.k]==null?' on':''}" data-f="${f.k}" data-v="null">❓ Unknown</button>
+  </div></div>`).join('')}
+</div>
+
+<!-- POTENTIAL -->
+<div class="sum-panel" data-panel="potential">
+  ${starWidget('development_potential_rating',A.development_potential_rating,'🏗 Dev')}
+  ${starWidget('farming_potential_rating',A.farming_potential_rating,'🌾 Farming')}
+  ${starWidget('tourism_potential_rating',A.tourism_potential_rating,'🏕 Tourism')}
+  ${starWidget('weekend_home_potential_rating',A.weekend_home_potential_rating,'🏡 Weekend')}
+</div>
+
+<!-- FILES -->
+<div class="sum-panel" data-panel="files">
+  <div id="file-sum-list">
+    ${fileQueue.length?fileQueue.map(f=>`<div class="sr"><span class="sl">${{photo:'📷',video:'🎬',pdf:'📄',document:'📁'}[f.type]||'📁'}</span><span class="sv">${f.file.name}</span></div>`).join(''):'<p class="text-muted" style="font-size:.85rem;margin:0;">No files yet.</p>'}
+  </div>
+  <label class="btn btn-outline-secondary btn-sm mt-2" style="cursor:pointer;">
+    <i class="bi bi-paperclip me-1"></i>Add Photos / Videos / Docs
+    <input type="file" multiple accept="image/*,video/*,.pdf,.doc,.docx" style="display:none;"
+      onchange="handleSumFileAdd(this)">
+  </label>
+</div>
+
+<!-- NOTES -->
+<div class="sum-panel" data-panel="notes">
+  <textarea class="form-control quick-ta" id="qnote" rows="4"
+    placeholder="Paste WhatsApp notes, observations, anything useful…">${A.quick_note||''}</textarea>
+  <small class="text-muted">Also saved as a Note record on the property.</small>
+</div>
+
+</div><!-- sum-outer -->
+
+<button class="create-btn" id="cbtn">
+  <i class="bi bi-check-lg me-1"></i>Create Property${fileQueue.length?' + Upload '+fileQueue.length+' File'+(fileQueue.length>1?'s':''):''}
+</button>`;
+
+  const row=await botSay('Here\'s your property — adjust anything, then tap Create:<br>'+html,320);
+
+  // Tab switching
+  row.querySelectorAll('.stab').forEach(t=>t.addEventListener('click',()=>{
+    row.querySelectorAll('.stab').forEach(s=>s.classList.remove('on'));
+    row.querySelectorAll('.sum-panel').forEach(p=>p.classList.remove('on'));
+    t.classList.add('on');
+    row.querySelector(`[data-panel="${t.dataset.tab}"]`).classList.add('on');
+  }));
+
+  // Type / priority / status chips
+  attachIcGroup(row,'[data-panel="basic"] [data-k]',k=>{
+    if(Object.keys(TYPES).includes(k))A.land_type=k;
+    else if(Object.keys(PRIS).includes(k))A.priority=k;
+    else if(Object.keys(STATUSES).includes(k))A.status=k;
+  });
+
+  // Road
+  row.querySelectorAll('.road-ic').forEach(b=>b.addEventListener('click',()=>{
+    row.querySelectorAll('.road-ic').forEach(x=>x.classList.remove('on'));b.classList.add('on');A.road_access_rating=+b.dataset.v;
+  }));
+  // Terrain
+  row.querySelectorAll('.terr-ic').forEach(b=>b.addEventListener('click',()=>{
+    row.querySelectorAll('.terr-ic').forEach(x=>x.classList.remove('on'));b.classList.add('on');A.terrain_type=b.dataset.v;
+  }));
+  // Water (multi)
+  row.querySelectorAll('.water-ic').forEach(b=>b.addEventListener('click',()=>{
+    b.classList.toggle('on'); A[b.dataset.v]=b.classList.contains('on');
+  }));
+  // Electricity
+  row.querySelectorAll('.elec-ic').forEach(b=>b.addEventListener('click',()=>{
+    row.querySelectorAll('.elec-ic').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+    A.electricity_available=b.dataset.v==='null'?null:b.dataset.v==='1';
+  }));
+  // Legal
+  row.querySelectorAll('.legal-ic').forEach(b=>b.addEventListener('click',()=>{
+    row.querySelectorAll(`.legal-ic[data-f="${b.dataset.f}"]`).forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');A[b.dataset.f]=b.dataset.v==='null'?null:b.dataset.v==='true';
+  }));
+  // Stars
+  row.querySelectorAll('.star').forEach(s=>s.addEventListener('click',()=>{
+    const f=s.dataset.f,n=+s.dataset.n; A[f]=n;
+    row.querySelectorAll(`#s_${f} .star`).forEach((x,i)=>{x.classList.toggle('on',i<n);});
+  }));
+
+  // Create button
+  row.querySelector('#cbtn').addEventListener('click',()=>{
+    const n=row.querySelector('#qnote');
+    if(n&&n.value.trim())A.quick_note=n.value.trim();
+    doCreate(row.querySelector('#cbtn'), row);
+  });
+
+  showChips([{label:'← Start over'}],()=>{
+    thread.innerHTML=''; fileQueue.forEach(f=>{if(f.objUrl)URL.revokeObjectURL(f.objUrl);}); fileQueue.length=0;
+    const keys=Object.keys(A); keys.forEach(k=>delete A[k]);
+    A.land_type='agricultural'; A.priority='medium'; A.status='to_visit'; A.distances={};
+    clearSugs(); start();
+  });
+}
+
+window.handleSumFileAdd=function(input){
+  Array.from(input.files).forEach(file=>{
+    const type=classifyFile(file),id=Date.now()+Math.random();
+    const objUrl=file.type.startsWith('image/')?URL.createObjectURL(file):null;
+    fileQueue.push({file,type,id,objUrl});
+    const list=document.getElementById('file-sum-list');
+    if(list){
+      const item=document.createElement('div');item.className='sr';
+      item.innerHTML=`<span class="sl">${{photo:'📷',video:'🎬',pdf:'📄',document:'📁'}[type]||'📁'}</span><span class="sv">${file.name}</span>`;
+      list.appendChild(item);
+    }
+    // Update create button label
+    const btn=document.getElementById('cbtn');
+    if(btn)btn.innerHTML=`<i class="bi bi-check-lg me-1"></i>Create Property + Upload ${fileQueue.length} File${fileQueue.length>1?'s':''}`;
+  });
+  input.value='';
+};
+
+/* ═══ Submit ══════════════════════════════════════════════════════════════ */
+async function doCreate(btn, row) {
+  btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Creating…';
+  clearSugs();
+  // Collect note
+  if(row){const n=row.querySelector('#qnote');if(n&&n.value.trim())A.quick_note=n.value.trim();}
+  try {
+    const r=await fetch(CREATE_URL,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},body:JSON.stringify(A)});
+    const d=await r.json();
+    if(!d.redirect)throw new Error(d.error||'error');
+    if(fileQueue.length){
+      btn.innerHTML=`<span class="spinner-border spinner-border-sm me-1"></span>Uploading ${fileQueue.length} file(s)…`;
+      const {ok,fail}=await uploadFiles(d.slug);
+      await botSay(`✅ Property created and ${ok} file(s) uploaded${fail?' ('+fail+' failed)':''}! Opening now…`,240);
+    } else {
+      await botSay('✅ Property created! Opening it now…',240);
+    }
+    setTimeout(()=>{window.location.href=d.redirect;},650);
+  } catch {
+    await botSay('❌ Something went wrong — please try again.',200);
+    btn.disabled=false; btn.innerHTML='<i class="bi bi-check-lg me-1"></i>Create Property';
+  }
+}
+
+async function uploadFiles(slug){
+  let ok=0,fail=0;
+  for(const f of fileQueue){
+    try{
+      const fd=new FormData();fd.append('file',f.file);fd.append('file_type',f.type);fd.append('description','');
+      const r=await fetch(`${UPLOAD_BASE}${slug}/attachments/upload/`,{method:'POST',headers:{'X-CSRFToken':CSRF},body:fd});
+      r.ok?ok++:fail++;
+    }catch{fail++;}
+  }
+  return{ok,fail};
+}
+
+start();
+})();
+</script>
+{% endblock %}

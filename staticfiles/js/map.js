@@ -22,13 +22,10 @@ class MapManager {
         this.infoWindow = new google.maps.InfoWindow();
         this.loadMarkers();
 
-        if (this.clickToAdd) {
-            this.map.addListener('click', (e) => {
-                const lat = e.latLng.lat().toFixed(7);
-                const lng = e.latLng.lng().toFixed(7);
-                window.location.href = `${this.newUrl}?lat=${lat}&lng=${lng}`;
-            });
-        }
+        // Map click: close any open popup. Never navigate — use Quick Add instead.
+        this.map.addListener('click', () => {
+            if (this.infoWindow) this.infoWindow.close();
+        });
 
         // Listen for filter updates
         document.addEventListener('mapMarkersUpdate', (e) => {
@@ -77,12 +74,55 @@ class MapManager {
             },
         });
 
+        marker._popupHtml = props.popup_html;
+
+        let hoverTimer = null;
+
+        marker.addListener('mouseover', () => {
+            hoverTimer = setTimeout(() => {
+                this.infoWindow.setContent(props.popup_html);
+                this.infoWindow.open(this.map, marker);
+            }, 400);
+        });
+
+        marker.addListener('mouseout', () => {
+            clearTimeout(hoverTimer);
+        });
+
         marker.addListener('click', () => {
+            clearTimeout(hoverTimer);
             this.infoWindow.setContent(props.popup_html);
             this.infoWindow.open(this.map, marker);
         });
 
         this.markers[props.slug] = marker;
+    }
+
+    focusMarker(slug) {
+        const marker = this.markers[slug];
+        if (!marker) return;
+        this.infoWindow.close();
+        this.map.panTo(marker.getPosition());
+        this.map.setZoom(15);
+        marker.setAnimation(google.maps.Animation.BOUNCE);
+        setTimeout(() => marker.setAnimation(null), 1400);
+    }
+
+    openMarker(slug) {
+        const tryOpen = () => {
+            const marker = this.markers[slug];
+            if (!marker) return false;
+            this.map.panTo(marker.getPosition());
+            this.map.setZoom(15);
+            this.infoWindow.setContent(marker._popupHtml);
+            this.infoWindow.open(this.map, marker);
+            return true;
+        };
+        if (!tryOpen()) {
+            // Markers may still be loading — poll briefly
+            const iv = setInterval(() => { if (tryOpen()) clearInterval(iv); }, 120);
+            setTimeout(() => clearInterval(iv), 4000);
+        }
     }
 
     highlightMarker(slug) {

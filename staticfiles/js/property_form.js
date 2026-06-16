@@ -94,6 +94,108 @@ function initPropertyFormMap() {
             }
         });
     });
+
+    initCurrentLocationButton();
+    initGoogleMapsUrlInput();
+}
+
+function parseGoogleMapsUrl(url) {
+    // https://www.google.com/maps/@lat,lng,zoom  (most common share format)
+    let m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    // ?q=lat,lng  or  &q=lat,lng
+    m = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    // ?ll=lat,lng  or  &ll=lat,lng
+    m = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    // plain "lat,lng" anywhere in the URL as a fallback
+    m = url.match(/(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/);
+    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+    return null;
+}
+
+function initGoogleMapsUrlInput() {
+    const input = document.getElementById('google-maps-url');
+    const btn = document.getElementById('btn-parse-url');
+    const feedback = document.getElementById('url-parse-feedback');
+    if (!input || !btn) return;
+
+    function applyUrl() {
+        const coords = parseGoogleMapsUrl(input.value.trim());
+        if (!coords) {
+            feedback.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Could not find coordinates in that URL. Try copying a full Google Maps link (not a short goo.gl link).</span>';
+            return;
+        }
+
+        document.getElementById('id_latitude').value = coords.lat.toFixed(7);
+        document.getElementById('id_longitude').value = coords.lng.toFixed(7);
+
+        if (formMap) {
+            placeFormMarker(coords.lat, coords.lng);
+            formMap.panTo({ lat: coords.lat, lng: coords.lng });
+            formMap.setZoom(14);
+        }
+
+        feedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Marked at ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}</span>`;
+        input.value = '';
+    }
+
+    btn.addEventListener('click', applyUrl);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyUrl(); } });
+}
+
+function initCurrentLocationButton() {
+    const btn = document.getElementById('btn-get-location');
+    if (!btn) return;
+
+    if (!navigator.geolocation) {
+        btn.disabled = true;
+        btn.title = 'Geolocation is not supported by your browser';
+        return;
+    }
+
+    btn.addEventListener('click', () => {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Locating…';
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = parseFloat(pos.coords.latitude.toFixed(7));
+                const lng = parseFloat(pos.coords.longitude.toFixed(7));
+
+                document.getElementById('id_latitude').value = lat;
+                document.getElementById('id_longitude').value = lng;
+
+                if (formMap) {
+                    placeFormMarker(lat, lng);
+                    formMap.panTo({ lat, lng });
+                    formMap.setZoom(14);
+                }
+
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle-fill me-1 text-success"></i>Location set';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Use My Current Location';
+                }, 3000);
+            },
+            (err) => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-crosshair me-1"></i>Use My Current Location';
+                const messages = {
+                    1: 'Location access denied. Please allow location in browser settings.',
+                    2: 'Location unavailable. Try again.',
+                    3: 'Location request timed out. Try again.',
+                };
+                alert(messages[err.code] || 'Could not get location.');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
 }
 
 function placeFormMarker(lat, lng) {

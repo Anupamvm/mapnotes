@@ -5,6 +5,7 @@ from django.utils.text import slugify
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 from apps.core.models import Project
+from .card_config import default_card_fields
 
 
 AREA_UNIT_CHOICES = [
@@ -85,6 +86,7 @@ class Property(models.Model):
     asking_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     expected_negotiated_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     price_per_acre = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    price_per_sqft = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     estimated_market_value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
 
     # Ownership & Contact
@@ -102,6 +104,11 @@ class Property(models.Model):
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='to_visit')
 
     general_notes = models.TextField(blank=True)
+
+    # Auto-calculated from home (Castle Royale Magnifique, Bopodi, Pune)
+    distance_from_home_km = models.DecimalField(max_digits=7, decimal_places=1, null=True, blank=True)
+    drive_time_minutes = models.IntegerField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -231,3 +238,14 @@ class Attachment(models.Model):
     def filename(self):
         import os
         return os.path.basename(self.file.name)
+
+
+class MapCardSettings(models.Model):
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='map_card_settings')
+    visible_fields = models.JSONField(default=default_card_fields)
+
+    def get_visible(self):
+        return set(self.visible_fields) if self.visible_fields else set(default_card_fields())
+
+    def __str__(self):
+        return f"Map card settings for {self.project.name}"

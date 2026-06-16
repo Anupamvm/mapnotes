@@ -1,0 +1,22 @@
+<form hx-post="{% url 'properties:map-card-settings' %}"
+      hx-target="#card-settings-result"
+      hx-trigger="change"
+      hx-swap="innerHTML">
+    {% csrf_token %}
+
+    {% for group, fields in groups.items %}
+    <div class="mb-2">
+        <div class="text-muted fw-semibold" style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;">{{ group }}</div>
+        {% for field in fields %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox"
+                   name="fields" value="{{ field.key }}"
+                   id="cf_{{ field.key }}"
+                   {% if field.checked %}checked{% endif %}>
+            <label class="form-check-label small" for="cf_{{ field.key }}">{{ field.label }}</label>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</form>
+<div id="card-settings-result" class="mt-1"></div>

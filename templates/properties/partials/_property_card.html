@@ -1,35 +1,82 @@
+{% load prop_filters %}
 <div class="col">
-    <div class="card h-100 shadow-sm property-card"
-         data-slug="{{ prop.slug }}"
-         onmouseenter="window.mapManager && window.mapManager.highlightMarker('{{ prop.slug }}')"
-         onclick="window.location.href='{{ prop.get_absolute_url }}'">
-        <div class="card-body pb-2">
-            <div class="d-flex justify-content-between align-items-start mb-1">
-                <span class="badge bg-{{ prop.priority_color }}">{{ prop.get_priority_display }}</span>
-                <span class="badge bg-secondary">{{ prop.get_status_display }}</span>
-            </div>
-            <h6 class="card-title fw-bold mb-1 text-truncate" title="{{ prop.name }}">{{ prop.name }}</h6>
-            <p class="text-muted small mb-1">
-                <i class="bi bi-geo-alt me-1"></i>{{ prop.village }}{% if prop.taluka %}, {{ prop.taluka }}{% endif %}, {{ prop.district }}
-            </p>
-            {% if prop.total_area %}
-            <p class="small mb-1">
-                <i class="bi bi-rulers me-1"></i>{{ prop.total_area }} {{ prop.get_area_unit_display }}
-            </p>
-            {% endif %}
-            {% if prop.asking_price %}
-            <p class="small mb-0 fw-semibold text-success">₹{{ prop.asking_price|floatformat:0 }}</p>
-            {% endif %}
-        </div>
-        <div class="card-footer bg-transparent py-1 d-flex justify-content-between align-items-center">
-            <small class="text-muted">{{ prop.reference_id }}</small>
-            {% if prop.investment_score %}
-            <span class="badge bg-info text-dark">Score: {{ prop.investment_score }}</span>
-            {% endif %}
-            <div class="form-check mb-0">
-                <input class="form-check-input compare-checkbox" type="checkbox"
-                       value="{{ prop.pk }}" onclick="event.stopPropagation(); updateCompare(this)">
-            </div>
-        </div>
+  <div class="prop-card priority-border-{{ prop.priority }}"
+       data-slug="{{ prop.slug }}"
+       onmouseenter="window.mapManager && window.mapManager.highlightMarker('{{ prop.slug }}')"
+       onclick="window.mapManager && window.mapManager.focusMarker('{{ prop.slug }}')">
+
+    {# Top bar #}
+    <div class="pc-topbar">
+      <span class="pc-badge pc-pri-{{ prop.priority }}">{{ prop.get_priority_display }}</span>
+      <span class="pc-badge pc-status">{{ prop.get_status_display }}</span>
+      <span class="pc-ref ms-auto">{{ prop.reference_id }}</span>
     </div>
+
+    {# Name #}
+    <div class="pc-name" title="{{ prop.name }}">{{ prop.name }}</div>
+
+    {# Location #}
+    <div class="pc-loc">
+      <i class="bi bi-geo-alt-fill"></i>
+      {{ prop.village }}{% if prop.village and prop.taluka %}, {% endif %}{{ prop.taluka }}{% if prop.district %}, {{ prop.district }}{% endif %}
+    </div>
+
+    {# Land type #}
+    {% if prop.land_type %}
+    <div class="pc-type">
+      {% if prop.land_type == 'agricultural' %}🌾{% elif prop.land_type == 'na' %}🏗{% elif prop.land_type == 'residential' %}🏠{% elif prop.land_type == 'commercial' %}🏪{% elif prop.land_type == 'industrial' %}🏭{% else %}🔀{% endif %}
+      {{ prop.get_land_type_display }}
+    </div>
+    {% endif %}
+
+    {# Metrics — always 4 tiles, NA fallback #}
+    <div class="pc-metrics">
+      <div class="pc-metric">
+        <span class="pc-mlabel">Price</span>
+        <span class="pc-mval pc-price">{% if prop.asking_price %}{{ prop.asking_price|inr }}{% else %}<span class="pc-na">NA</span>{% endif %}</span>
+      </div>
+      <div class="pc-metric">
+        <span class="pc-mlabel">Area</span>
+        <span class="pc-mval">{% if prop.total_area %}{{ prop.total_area|floatstrip }} {{ prop.get_area_unit_display }}{% else %}<span class="pc-na">NA</span>{% endif %}</span>
+      </div>
+      <div class="pc-metric">
+        <span class="pc-mlabel">Rate/Acre</span>
+        <span class="pc-mval">{% if prop.price_per_acre %}{{ prop.price_per_acre|inr_acre }}{% else %}<span class="pc-na">NA</span>{% endif %}</span>
+      </div>
+      <div class="pc-metric">
+        <span class="pc-mlabel">Rate/Sqft</span>
+        <span class="pc-mval">{% if prop.price_per_sqft %}{{ prop.price_per_sqft|inr_sqft }}{% else %}<span class="pc-na">NA</span>{% endif %}</span>
+      </div>
+    </div>
+
+    {# Distance row — always visible #}
+    <div class="pc-dist-row">
+      <span class="pc-dist-item">
+        <i class="bi bi-house-door-fill"></i>
+        {% if prop.distance_from_home_km %}{{ prop.distance_from_home_km }} km{% else %}<span class="pc-na">— km</span>{% endif %}
+      </span>
+      <span class="pc-dist-sep">·</span>
+      <span class="pc-dist-item">
+        <i class="bi bi-clock"></i>
+        {% if prop.drive_time_minutes %}~{{ prop.drive_time_minutes }} min{% else %}<span class="pc-na">— min</span>{% endif %}
+      </span>
+      {% if prop.agent_name %}
+      <span class="pc-dist-sep">·</span>
+      <span class="pc-dist-item"><i class="bi bi-person"></i> {{ prop.agent_name }}</span>
+      {% endif %}
+    </div>
+
+    {# Footer: score · open · compare #}
+    <div class="pc-footer">
+      <div class="pc-actions" onclick="event.stopPropagation();">
+        {% if prop.investment_score %}
+        <span class="pc-score" title="Investment score">{{ prop.investment_score }}</span>
+        {% endif %}
+        <a href="{{ prop.get_absolute_url }}" class="pc-open">Open →</a>
+        <input class="compare-checkbox form-check-input mt-0" type="checkbox"
+               value="{{ prop.pk }}" onclick="updateCompare(this)" title="Add to compare">
+      </div>
+    </div>
+
+  </div>
 </div>
