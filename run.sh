@@ -35,38 +35,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # ── --stop flag ───────────────────────────────────────────────────────────────
-if [[ "${1:-}" == "--stop" ]]; then
-    if [[ -f "$PID_FILE" ]]; then
-        PID=$(cat "$PID_FILE")
-        if kill -0 "$PID" 2>/dev/null; then
-            kill "$PID" && success "Stopped MapNotes (PID $PID)"
-        else
-            warn "Process $PID not running"
-        fi
-        rm -f "$PID_FILE"
+kill_port() {
+    local pids
+    pids=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
+    if [[ -n "$pids" ]]; then
+        echo "$pids" | xargs kill 2>/dev/null || true
+        success "Stopped all processes on port $PORT"
     else
-        # Try killing by port
-        PID=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
-        if [[ -n "$PID" ]]; then
-            kill "$PID" && success "Stopped process on port $PORT"
-        else
-            warn "Nothing running on port $PORT"
-        fi
+        warn "Nothing running on port $PORT"
     fi
+    rm -f "$PID_FILE"
+}
+
+if [[ "${1:-}" == "--stop" ]]; then
+    kill_port
     exit 0
 fi
 
 # ── --reset flag (restart only, DB untouched) ────────────────────────────────
 if [[ "${1:-}" == "--reset" ]]; then
-    if [[ -f "$PID_FILE" ]]; then
-        OLD_PID=$(cat "$PID_FILE")
-        if kill -0 "$OLD_PID" 2>/dev/null; then
-            info "Stopping running instance (PID $OLD_PID)..."
-            kill "$OLD_PID" 2>/dev/null || true
-            sleep 1
-        fi
-        rm -f "$PID_FILE"
-    fi
+    kill_port
     info "Restarting server (database untouched)..."
 fi
 
@@ -103,9 +91,9 @@ esac
 
 # ── Check for port conflict ───────────────────────────────────────────────────
 if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
-    EXISTING_PID=$(lsof -ti tcp:$PORT 2>/dev/null || true)
-    warn "Port $PORT is already in use (PID: $EXISTING_PID)"
-    warn "MapNotes may already be running. Use './run.sh --stop' first, or access http://localhost:$PORT"
+    EXISTING_PIDS=$(lsof -ti tcp:$PORT 2>/dev/null | tr '\n' ' ' || true)
+    warn "Port $PORT is already in use (PID: $EXISTING_PIDS)"
+    warn "MapNotes may already be running. Use './run.sh --stop' first, or access https://localhost:$PORT"
     exit 0
 fi
 
@@ -259,12 +247,7 @@ header "Launching MapNotes on port $PORT"
 # Kill any stale PID from a previous run
 if [[ -f "$PID_FILE" ]]; then
     OLD_PID=$(cat "$PID_FILE")
-    if kill -0 "$OLD_PID" 2>/dev/null; then
-        warn "Stopping previous instance (PID $OLD_PID)..."
-        kill "$OLD_PID" 2>/dev/null || true
-        sleep 1
-    fi
-    rm -f "$PID_FILE"
+    kill_port
 fi
 
 # Generate self-signed SSL cert if not present (enables HTTPS, avoids insecure form warnings)
