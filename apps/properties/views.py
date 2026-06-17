@@ -279,6 +279,20 @@ class PropertyChatView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
+class RecalculateDistanceView(LoginRequiredMixin, ActiveProjectMixin, View):
+    def post(self, request, slug):
+        prop = get_object_or_404(self.project.properties, slug=slug)
+        if not prop.latitude or not prop.longitude:
+            return JsonResponse({'error': 'No coordinates set for this property.'}, status=400)
+        km, mins = fetch_distance_from_home(prop.latitude, prop.longitude)
+        if km is None:
+            return JsonResponse({'error': 'Could not fetch distance. Check Google Maps API key.'}, status=502)
+        prop.distance_from_home_km = km
+        prop.drive_time_minutes = mins
+        prop.save(update_fields=['distance_from_home_km', 'drive_time_minutes'])
+        return JsonResponse({'distance_km': float(km), 'drive_minutes': mins})
+
+
 class PropertyQuickCreateView(LoginRequiredMixin, View):
     def post(self, request):
         try:

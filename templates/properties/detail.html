@@ -243,6 +243,37 @@
 
                 <!-- Distances -->
                 <div class="tab-pane fade" id="tab-distances">
+                    <!-- Home distance — always shown -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="fw-semibold mb-0 small text-muted text-uppercase" style="letter-spacing:.04em;">From Home</h6>
+                            {% if property.latitude and property.longitude %}
+                            <button id="recalculate-btn" class="btn btn-sm btn-outline-secondary" onclick="recalculateDistance()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Recalculate
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="row row-cols-2 g-3 mb-1">
+                            <div class="col">
+                                <div class="card text-center py-3 border-primary border-opacity-25">
+                                    <div class="small text-muted mb-1"><i class="bi bi-house-door me-1"></i>Distance from Home</div>
+                                    <div class="fw-bold fs-5" id="home-distance-val">
+                                        {% if property.distance_from_home_km %}{{ property.distance_from_home_km }} km{% else %}<span class="text-muted fs-6">—</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="card text-center py-3 border-primary border-opacity-25">
+                                    <div class="small text-muted mb-1"><i class="bi bi-clock me-1"></i>Drive Time from Home</div>
+                                    <div class="fw-bold fs-5" id="drive-time-val">
+                                        {% if property.drive_time_minutes %}~{{ property.drive_time_minutes }} min{% else %}<span class="text-muted fs-6">—</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="recalculate-status" class="small text-muted text-end" style="min-height:1.2em;"></div>
+                    </div>
+
                     {% if property.distances %}
                     {% with d=property.distances %}
                     <div class="row row-cols-2 row-cols-md-3 g-3">
@@ -262,8 +293,6 @@
                     </div>
                     {% endif %}
                     {% endwith %}
-                    {% else %}
-                    <p class="text-muted">No distance data. <a href="{% url 'properties:edit' property.slug %}">Edit property</a> to add it.</p>
                     {% endif %}
                 </div>
 
@@ -322,5 +351,40 @@ document.addEventListener('htmx:afterRequest', function(e) {
         } catch(err) {}
     }
 });
+
+function recalculateDistance() {
+    const btn = document.getElementById('recalculate-btn');
+    const status = document.getElementById('recalculate-status');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Calculating…';
+    status.textContent = '';
+
+    const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    fetch('{% url "properties:recalculate-distance" property.slug %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            status.textContent = 'Error: ' + data.error;
+            status.className = 'small text-danger text-end';
+        } else {
+            document.getElementById('home-distance-val').textContent = data.distance_km + ' km';
+            document.getElementById('drive-time-val').textContent = '~' + data.drive_minutes + ' min';
+            status.textContent = 'Updated successfully';
+            status.className = 'small text-success text-end';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Recalculate';
+        setTimeout(() => { status.textContent = ''; }, 4000);
+    })
+    .catch(() => {
+        status.textContent = 'Request failed. Try again.';
+        status.className = 'small text-danger text-end';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Recalculate';
+    });
+}
 </script>
 {% endblock %}

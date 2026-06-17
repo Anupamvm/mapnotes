@@ -61,13 +61,21 @@
     <div class="small mt-1">Score: <span class="fw-semibold">{{ property.investment_score }}/100</span></div>
     {% endif %}
 
-    {% if 'distance_from_home_km' in visible_fields and property.distance_from_home_km %}
-    <div class="small text-muted mt-1">
-        <i class="bi bi-house-door me-1"></i>{{ property.distance_from_home_km }} km
-        {% if 'drive_time_minutes' in visible_fields and property.drive_time_minutes %}&middot; ~{{ property.drive_time_minutes }} min{% endif %}
+    {% if property.distance_from_home_km or property.drive_time_minutes %}
+    <div class="border-top mt-2 pt-2 d-flex gap-3">
+        {% if property.distance_from_home_km %}
+        <div class="text-center flex-fill">
+            <div style="font-size:.65rem;" class="text-muted text-uppercase" style="letter-spacing:.04em;">Distance</div>
+            <div class="fw-bold" style="font-size:.9rem;"><i class="bi bi-house-door me-1 text-primary" style="font-size:.75rem;"></i>{{ property.distance_from_home_km }} km</div>
+        </div>
+        {% endif %}
+        {% if property.drive_time_minutes %}
+        <div class="text-center flex-fill">
+            <div style="font-size:.65rem;" class="text-muted text-uppercase">Drive Time</div>
+            <div class="fw-bold" style="font-size:.9rem;"><i class="bi bi-clock me-1 text-primary" style="font-size:.75rem;"></i>~{{ property.drive_time_minutes }} min</div>
+        </div>
+        {% endif %}
     </div>
-    {% elif 'drive_time_minutes' in visible_fields and property.drive_time_minutes %}
-    <div class="small text-muted mt-1"><i class="bi bi-clock me-1"></i>~{{ property.drive_time_minutes }} min drive</div>
     {% endif %}
 
     {% if 'last_visit' in visible_fields %}

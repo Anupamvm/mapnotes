@@ -15,6 +15,7 @@ urlpatterns = [
     path('<slug:slug>/', views.PropertyDetailView.as_view(), name='detail'),
     path('<slug:slug>/edit/', views.PropertyUpdateView.as_view(), name='edit'),
     path('<slug:slug>/delete/', views.PropertyDeleteView.as_view(), name='delete'),
+    path('<slug:slug>/recalculate-distance/', views.RecalculateDistanceView.as_view(), name='recalculate-distance'),
 
     # HTMX activity partials
     path('<slug:slug>/visits/add/', activity_views.VisitCreateView.as_view(), name='visit-add'),
