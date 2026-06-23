@@ -138,6 +138,14 @@
 <script>
 function initMap() {
     window.mapManager = new MapManager('map-container');
+    // Center on a specific property if ?lat=&lng= are in the URL
+    const sp = new URLSearchParams(window.location.search);
+    const cLat = parseFloat(sp.get('lat'));
+    const cLng = parseFloat(sp.get('lng'));
+    if (!isNaN(cLat) && !isNaN(cLng) && window.mapManager) {
+        window.mapManager.map.setCenter({ lat: cLat, lng: cLng });
+        window.mapManager.map.setZoom(14);
+    }
 }
 </script>
 <script async defer

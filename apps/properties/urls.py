@@ -11,11 +11,13 @@ urlpatterns = [
     path('new/', views.PropertyCreateView.as_view(), name='create'),
     path('map/markers/', views.MapMarkersView.as_view(), name='map-markers'),
     path('map/card-settings/', views.MapCardSettingsView.as_view(), name='map-card-settings'),
+    path('resolve-map-url/', views.ResolveMapUrlView.as_view(), name='resolve-map-url'),
 
     path('<slug:slug>/', views.PropertyDetailView.as_view(), name='detail'),
     path('<slug:slug>/edit/', views.PropertyUpdateView.as_view(), name='edit'),
     path('<slug:slug>/delete/', views.PropertyDeleteView.as_view(), name='delete'),
     path('<slug:slug>/recalculate-distance/', views.RecalculateDistanceView.as_view(), name='recalculate-distance'),
+    path('<slug:slug>/update-location/', views.PropertyUpdateLocationView.as_view(), name='update-location'),
 
     # HTMX activity partials
     path('<slug:slug>/visits/add/', activity_views.VisitCreateView.as_view(), name='visit-add'),

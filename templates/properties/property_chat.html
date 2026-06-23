@@ -169,8 +169,22 @@ function toPricePerGuntha(pricePerAcre) { return pricePerAcre ? pricePerAcre / 4
 
 /* ── Parsers ── */
 function parseGMaps(t) {
-  const m = t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || t.match(/[?&]q=(-?\d+\.\d+)[,+](-?\d+\.\d+)/);
+  let m = t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || t.match(/[?&]q=(-?\d+\.\d+)[,+](-?\d+\.\d+)/)
+         || t.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/) || t.match(/(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})/);
   return m ? { lat: +m[1], lng: +m[2] } : null;
+}
+function isShortMapsUrl(t) {
+  return /goo\.gl\/maps|maps\.app\.goo\.gl/.test(t);
+}
+async function resolveShortUrl(url) {
+  try {
+    const r = await fetch('{% url "properties:resolve-map-url" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ url }),
+    });
+    return await r.json();
+  } catch { return null; }
 }
 function parseMoney(t) {
   const s = t.toLowerCase().replace(/[\s,₹]/g,'');
@@ -360,12 +374,61 @@ async function stepLocation() {
   await botSay('Where is it?<br><small class="text-muted">Tap GPS, paste a Google Maps link, or type the village name</small>');
   gpsWrap.style.display='block';
   showChips([{label:'Skip →'}],()=>{userSay('Location skipped');clearSugs();disableInput();stepArea();});
-  enableInput('Paste Maps link, village, or address…',v=>{
+  enableInput('Paste Maps link, village, or address…', async v => {
     const c=parseGMaps(v);
-    if(c){A.latitude=c.lat;A.longitude=c.lng;userSay('📍 '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));}
-    else{A.full_address=v;userSay(v);}
-    clearSugs();disableInput();stepArea();
-  },'Tap GPS button above · Shift+Enter for new line');
+    if(c){
+      A.latitude=c.lat; A.longitude=c.lng;
+      userSay('📍 '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));
+      clearSugs(); disableInput(); stepArea();
+    } else if(isShortMapsUrl(v)) {
+      // Short link (goo.gl, maps.app.goo.gl) — resolve server-side
+      userSay(v); clearSugs(); disableInput();
+      const dot=typing();
+      const res=await resolveShortUrl(v);
+      dot.remove();
+      if(res && res.lat){
+        A.latitude=res.lat; A.longitude=res.lng;
+        await botSay(`Found location from your link:<br>📍 ${res.lat.toFixed(5)}, ${res.lng.toFixed(5)}`);
+        showChips([{label:'✓ Use this'},{label:'↺ Try different link'},{label:'Skip →'}], item=>{
+          clearSugs();
+          if(item.label==='↺ Try different link'){ delete A.latitude; delete A.longitude; stepLocation(); }
+          else if(item.label==='Skip →'){ delete A.latitude; delete A.longitude; stepArea(); }
+          else stepArea();
+        });
+      } else {
+        await botSay('Couldn\'t extract coordinates from that short link.<br><small class="text-muted">In Google Maps: tap <strong>Share → Copy link</strong> to get the full URL, or use GPS above.</small>',200);
+        A.full_address=v; stepArea();
+      }
+    } else {
+      userSay(v); clearSugs(); disableInput();
+      if(window.geocoder){
+        const dot=typing();
+        const found=await geocodeText(v).catch(()=>null);
+        dot.remove();
+        if(found){
+          A.latitude=found.lat; A.longitude=found.lng; A.full_address=found.formattedAddress;
+          await botSay(`Found on Google Maps:<br><strong>${found.formattedAddress}</strong><br><small class="text-muted">📍 ${found.lat.toFixed(5)}, ${found.lng.toFixed(5)}</small>`);
+          showChips([{label:'✓ That\'s it'},{label:'↺ Try again'},{label:'Skip →'}], item=>{
+            clearSugs();
+            if(item.label==='↺ Try again'){
+              delete A.latitude; delete A.longitude; delete A.full_address;
+              stepLocation();
+            } else if(item.label==='Skip →'){
+              delete A.latitude; delete A.longitude; delete A.full_address;
+              stepArea();
+            } else {
+              stepArea();
+            }
+          });
+        } else {
+          await botSay('Couldn\'t find that on Google Maps — saved as text. You can pin the exact location from the property page.',200);
+          A.full_address=v; stepArea();
+        }
+      } else {
+        A.full_address=v; stepArea();
+      }
+    }
+  },'Tap GPS above · paste a Maps link · or type village name');
 }
 gpsBtn.addEventListener('click',function(){
   gpsBtn.disabled=true; gpsBtn.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Getting…';
@@ -873,11 +936,21 @@ async function doCreate(btn, row) {
     if(fileQueue.length){
       btn.innerHTML=`<span class="spinner-border spinner-border-sm me-1"></span>Uploading ${fileQueue.length} file(s)…`;
       const {ok,fail}=await uploadFiles(d.slug);
-      await botSay(`✅ Property created and ${ok} file(s) uploaded${fail?' ('+fail+' failed)':''}! Opening now…`,240);
+      await botSay(`✅ Property created and ${ok} file(s) uploaded${fail?' ('+fail+' failed)':''}!`,240);
     } else {
-      await botSay('✅ Property created! Opening it now…',240);
+      await botSay('✅ Property created!',240);
     }
-    setTimeout(()=>{window.location.href=d.redirect;},650);
+    // Show navigation options instead of auto-redirecting
+    sugs.innerHTML='';
+    const mapA=document.createElement('a');
+    let mapHref='/properties/';
+    if(d.latitude && d.longitude) mapHref=`/properties/?lat=${d.latitude}&lng=${d.longitude}`;
+    mapA.href=mapHref; mapA.className='sc'; mapA.textContent='← Back to Map';
+    mapA.style.cssText='text-decoration:none;';
+    const propA=document.createElement('a');
+    propA.href=d.redirect; propA.className='sc'; propA.textContent='Open Property →';
+    propA.style.cssText='text-decoration:none;border-color:#198754;color:#198754;';
+    sugs.appendChild(mapA); sugs.appendChild(propA);
   } catch {
     await botSay('❌ Something went wrong — please try again.',200);
     btn.disabled=false; btn.innerHTML='<i class="bi bi-check-lg me-1"></i>Create Property';
@@ -899,4 +972,27 @@ async function uploadFiles(slug){
 start();
 })();
 </script>
+
+{% if GOOGLE_MAPS_API_KEY %}
+<script>
+window.geocoder = null;
+function initChatGeocoder() {
+    window.geocoder = new google.maps.Geocoder();
+}
+function geocodeText(address) {
+    return new Promise(function(resolve) {
+        if (!window.geocoder) { resolve(null); return; }
+        window.geocoder.geocode({ address: address, region: 'in' }, function(results, status) {
+            if (status === 'OK' && results.length > 0) {
+                var loc = results[0].geometry.location;
+                resolve({ lat: loc.lat(), lng: loc.lng(), formattedAddress: results[0].formatted_address });
+            } else {
+                resolve(null);
+            }
+        });
+    });
+}
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initChatGeocoder"></script>
+{% endif %}
 {% endblock %}

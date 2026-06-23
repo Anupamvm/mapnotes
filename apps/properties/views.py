@@ -372,4 +372,85 @@ class PropertyQuickCreateView(LoginRequiredMixin, View):
             except Exception:
                 pass
 
-        return JsonResponse({'redirect': prop.get_absolute_url(), 'slug': prop.slug})
+        return JsonResponse({
+            'redirect': prop.get_absolute_url(),
+            'slug': prop.slug,
+            'latitude': float(prop.latitude) if prop.latitude else None,
+            'longitude': float(prop.longitude) if prop.longitude else None,
+        })
+
+
+class PropertyUpdateLocationView(LoginRequiredMixin, View):
+    def post(self, request, slug):
+        prop = get_object_or_404(Property, slug=slug)
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        update_fields = []
+        lat = data.get('latitude')
+        lng = data.get('longitude')
+        if lat is not None:
+            prop.latitude = lat
+            update_fields.append('latitude')
+        if lng is not None:
+            prop.longitude = lng
+            update_fields.append('longitude')
+        if 'full_address' in data and data['full_address']:
+            prop.full_address = data['full_address']
+            update_fields.append('full_address')
+
+        if update_fields:
+            prop.save(update_fields=update_fields)
+
+        if prop.latitude and prop.longitude:
+            try:
+                km, mins = fetch_distance_from_home(prop.latitude, prop.longitude)
+                if km is not None:
+                    prop.distance_from_home_km = km
+                    prop.drive_time_minutes = mins
+                    prop.save(update_fields=['distance_from_home_km', 'drive_time_minutes'])
+            except Exception:
+                pass
+
+        return JsonResponse({
+            'success': True,
+            'latitude': float(prop.latitude) if prop.latitude else None,
+            'longitude': float(prop.longitude) if prop.longitude else None,
+        })
+
+
+class ResolveMapUrlView(LoginRequiredMixin, View):
+    """Follows short/redirect Maps URLs server-side and extracts coordinates."""
+    ALLOWED_HOSTS = {'goo.gl', 'maps.app.goo.gl', 'maps.google.com', 'www.google.com', 'google.com'}
+
+    def post(self, request):
+        import re
+        from urllib.request import urlopen, Request as UReq
+        from urllib.error import URLError
+        from urllib.parse import urlparse
+
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        url = data.get('url', '').strip()
+        parsed = urlparse(url)
+        if not parsed.hostname or parsed.hostname.lstrip('www.') not in {h.lstrip('www.') for h in self.ALLOWED_HOSTS}:
+            return JsonResponse({'error': 'Not a recognized Maps URL'}, status=400)
+
+        try:
+            req = UReq(url, headers={'User-Agent': 'Mozilla/5.0'})
+            resp = urlopen(req, timeout=6)
+            final_url = resp.geturl()
+        except (URLError, Exception):
+            return JsonResponse({'error': 'Could not resolve URL'}, status=400)
+
+        for pattern in [r'@(-?\d+\.\d+),(-?\d+\.\d+)', r'[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)', r'[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)']:
+            m = re.search(pattern, final_url)
+            if m:
+                return JsonResponse({'lat': float(m[1]), 'lng': float(m[2]), 'resolved_url': final_url})
+
+        return JsonResponse({'error': 'Could not extract coordinates', 'resolved_url': final_url}, status=400)
